@@ -12,15 +12,9 @@ _ALIASES: dict[str, str] = {
     "postgres": "postgresql",
     "postgresql database": "postgresql",
     "psql": "postgresql",
-    "js": "javascript",
-    "ts": "typescript",
-    "py": "python",
     "golang": "go",
     "k8s": "kubernetes",
-    "ml": "machine learning",
-    "ai": "artificial intelligence",
     "nlp": "natural language processing",
-    "cv": "computer vision",
     "gcp": "google cloud",
     "aws cloud": "aws",
     "rest api": "rest",
@@ -128,3 +122,25 @@ def keyword_overlap(query: str, doc: str) -> float:
 
 def term_frequencies(text: str) -> Counter:
     return Counter(content_tokens(text))
+
+
+# Display casing for canonical skill forms (retrieval uses lowercase; humans don't).
+_ACRONYMS = {"sql", "rest", "api", "etl", "aws", "gcp", "iot", "llm", "rag", "cnn",
+             "mqtt", "cicd", "grpc", "dbt"}
+_PRETTY = {
+    "postgresql": "PostgreSQL", "mysql": "MySQL", "sqlite": "SQLite",
+    "javascript": "JavaScript", "typescript": "TypeScript", "nextjs": "Next.js",
+    "nodejs": "Node.js", "node": "Node.js", "fastapi": "FastAPI", "swiftui": "SwiftUI",
+    "github": "GitHub", "scikit-learn": "scikit-learn", "pytorch": "PyTorch",
+    "tensorflow": "TensorFlow", "1d-cnn": "1D-CNN", "max78000": "MAX78000",
+    "esp32": "ESP32", "google cloud": "Google Cloud", "edge ai": "Edge AI",
+}
+
+
+def prettify_skill(canon: str) -> str:
+    c = canon.lower()
+    if c in _PRETTY:
+        return _PRETTY[c]
+    if c in _ACRONYMS:
+        return c.upper()
+    return " ".join(w.upper() if w in _ACRONYMS else w.capitalize() for w in c.split())

@@ -1,0 +1,26 @@
+Data Engineer
+
+We are hiring a Data Engineer to build and maintain the data platform that powers our
+analytics and machine learning teams.
+
+Responsibilities:
+- Build and maintain reliable data pipelines
+- Design and optimize SQL data models in PostgreSQL
+- Develop ETL processes to move and transform data
+- Integrate data from REST APIs and external sources
+- Ensure data quality and real-time data flow
+
+Required skills:
+- Strong Python and SQL
+- Experience with PostgreSQL and relational data modeling
+- Building ETL / data pipelines
+- REST API integration
+- Working with structured data and data processing
+
+Nice to have:
+- Apache Airflow for orchestration
+- Spark for large-scale processing
+- dbt for transformations
+- Experience with cloud data warehouses
+
+3+ years of experience preferred.

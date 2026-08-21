@@ -84,6 +84,9 @@ _PREFERRED_CUES = ("prefer", "nice to have", "nice-to-have", "bonus", "plus",
 _ACTION_VERBS = ("build", "design", "develop", "maintain", "implement", "create",
                  "manage", "optimize", "deploy", "analyze", "collaborate", "own",
                  "lead", "architect", "integrate", "scale", "monitor", "ship")
+# Prose lead-ins that signal a marketing sentence, not a responsibility bullet.
+_PROSE_LEADS = ("we ", "we're", "we are", "our ", "you'll", "you will", "as a",
+                "the ideal", "this role", "join ", "about ")
 _EMAIL_RE = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
 _PHONE_RE = re.compile(r"(\+?\d[\d\s().-]{7,}\d)")
 
@@ -118,6 +121,7 @@ class MockLLMProvider(LLMProvider):
         responsibilities = [
             ln.lstrip("-•* ").strip() for ln in lines
             if any(v in ln.lower() for v in _ACTION_VERBS) and len(ln.split()) > 3
+            and not ln.lower().startswith(_PROSE_LEADS)
         ][:10]
 
         role = ""

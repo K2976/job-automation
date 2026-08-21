@@ -1,0 +1,102 @@
+{
+  "candidate": {
+    "name": "Kartik Sanghi",
+    "email": "kartik@example.com",
+    "phone": "+91 90000 00000",
+    "location": "Pune, India",
+    "headline": "iOS Developer with backend, data and edge-AI experience",
+    "links": ["https://github.com/example", "https://linkedin.com/in/example"]
+  },
+  "skills": [
+    {"name": "Swift", "category": "language"},
+    {"name": "SwiftUI", "category": "framework"},
+    {"name": "Python", "category": "language"},
+    {"name": "SQL", "category": "language"},
+    {"name": "FastAPI", "category": "framework"},
+    {"name": "Supabase", "category": "database"},
+    {"name": "PostgreSQL", "category": "database"},
+    {"name": "REST", "category": "concept"},
+    {"name": "Pandas", "category": "library"},
+    {"name": "1D-CNN", "category": "ml"},
+    {"name": "Edge Impulse", "category": "tool"},
+    {"name": "Git", "category": "tool"}
+  ],
+  "projects": [
+    {
+      "name": "Parkezy",
+      "summary": "Real-time smart parking iOS app with a backend data layer.",
+      "description": "Built an iOS parking app in SwiftUI with a FastAPI backend. Designed the persistence layer on Supabase/PostgreSQL, implemented REST APIs for slot availability, and used real-time synchronization so parking availability updated live across devices. Handled structured data flow between the mobile client and the backend.",
+      "domain": "mobile / backend",
+      "technologies": ["SwiftUI", "FastAPI", "Supabase", "PostgreSQL", "REST"],
+      "languages": ["Swift", "Python", "SQL"],
+      "responsibilities": [
+        "Designed the PostgreSQL schema and data access layer",
+        "Implemented REST APIs for real-time slot availability",
+        "Built real-time synchronization between client and backend"
+      ],
+      "achievements": ["Reduced average slot-search time in user testing"],
+      "metrics": [],
+      "links": []
+    },
+    {
+      "name": "Setu AI",
+      "summary": "Edge-AI anomaly detection on a microcontroller.",
+      "description": "Developed a 1D-CNN model for real-time signal classification deployed to a MAX78000 edge-AI microcontroller using Edge Impulse. Built a Python data-processing pipeline to clean, window and label raw sensor time-series, engineered features, and evaluated model accuracy before deployment.",
+      "domain": "edge_ai",
+      "technologies": ["1D-CNN", "MAX78000", "Edge Impulse", "Python"],
+      "languages": ["Python"],
+      "responsibilities": [
+        "Built a Python pipeline for sensor time-series cleaning and feature engineering",
+        "Trained and evaluated a 1D-CNN classifier",
+        "Deployed the model to an edge microcontroller"
+      ],
+      "achievements": ["Achieved real-time on-device inference within power budget"],
+      "metrics": [],
+      "links": []
+    },
+    {
+      "name": "PortfolioKit",
+      "summary": "Reusable SwiftUI component library for iOS portfolio apps.",
+      "description": "Created a SwiftUI component library with custom animations, reusable UI views and a theming system to speed up building polished iOS interfaces.",
+      "domain": "mobile",
+      "technologies": ["SwiftUI"],
+      "languages": ["Swift"],
+      "responsibilities": [
+        "Designed reusable SwiftUI views and a theming system",
+        "Implemented custom animations and layout components"
+      ],
+      "achievements": [],
+      "metrics": [],
+      "links": []
+    }
+  ],
+  "experience": [
+    {
+      "company": "Freelance",
+      "title": "iOS Developer",
+      "start": "2023",
+      "end": "Present",
+      "description": "Built and shipped iOS applications for clients, including backend integration with FastAPI services and PostgreSQL databases.",
+      "technologies": ["Swift", "SwiftUI", "FastAPI", "PostgreSQL"],
+      "highlights": [
+        "Delivered multiple production iOS apps",
+        "Integrated mobile clients with Python backends and SQL databases"
+      ]
+    }
+  ],
+  "education": [
+    {
+      "institution": "Example Institute of Technology",
+      "degree": "B.Tech",
+      "field": "Computer Engineering",
+      "start": "2021",
+      "end": "2025"
+    }
+  ],
+  "certifications": [
+    {"name": "Edge AI Fundamentals", "issuer": "Edge Impulse", "year": "2024"}
+  ],
+  "achievements": [
+    {"text": "Winner, university IoT hackathon for the Setu AI edge-AI project"}
+  ]
+}
