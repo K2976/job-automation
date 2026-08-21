@@ -84,6 +84,7 @@ def generate_for_job(job_id: int, llm: LLMProvider | None = None) -> dict:
     resume = generation.generate_resume(
         candidate, requirements.role, requirements, matches, entities, index, llm,
         approved_rewrites=approved_rewrites)
+    db.save_generation(job_id, resume.model_dump_json())
 
     # Validate against ALL entities (any provenance) so unapproved claims are caught.
     all_entities = db.get_entities(candidate_id)

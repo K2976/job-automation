@@ -90,6 +90,43 @@ def generate_resume(
     return resume
 
 
+def render_html(r: TailoredResume) -> str:
+    """Standalone, print-friendly HTML document from the structured résumé model."""
+    import html as _html
+
+    def esc(s: str) -> str:
+        return _html.escape(s or "")
+
+    c = r.candidate
+    contact = " · ".join(x for x in (c.email, c.phone, c.location, *c.links) if x)
+    parts = [
+        "<!doctype html><html><head><meta charset='utf-8'>",
+        f"<title>{esc(c.name)} — {esc(r.target_role)}</title>",
+        "<style>",
+        "body{font:14px/1.55 -apple-system,Segoe UI,Roboto,sans-serif;color:#1a1a1a;",
+        "max-width:760px;margin:32px auto;padding:0 24px;}",
+        "h1{font-size:26px;margin:0 0 2px;} .contact{color:#555;font-size:13px;margin-bottom:14px;}",
+        "h2{font-size:14px;text-transform:uppercase;letter-spacing:.06em;color:#2a5db0;",
+        "border-bottom:1px solid #d7dae0;padding-bottom:3px;margin:18px 0 8px;}",
+        ".role{color:#555;font-size:13px;} ul{margin:6px 0;padding-left:20px;} li{margin:3px 0;}",
+        ".skills{margin:4px 0;}</style></head><body>",
+        f"<h1>{esc(c.name)}</h1>",
+        f"<div class='role'>{esc(r.target_role)}</div>" if r.target_role else "",
+        f"<div class='contact'>{esc(contact)}</div>" if contact else "",
+    ]
+    if r.summary:
+        parts += ["<h2>Summary</h2>", f"<p>{esc(r.summary)}</p>"]
+    if r.skills:
+        parts += ["<h2>Skills</h2>",
+                  f"<div class='skills'>{esc(' · '.join(r.skills))}</div>"]
+    for sec in r.sections:
+        parts.append(f"<h2>{esc(sec.title)}</h2><ul>")
+        parts += [f"<li>{esc(b.text)}</li>" for b in sec.bullets]
+        parts.append("</ul>")
+    parts.append("</body></html>")
+    return "".join(parts)
+
+
 def render_markdown(r: TailoredResume) -> str:
     c = r.candidate
     lines = [f"# {c.name}", ""]

@@ -7,12 +7,20 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, Response
 from pydantic import BaseModel
 
-from . import analysis, db, ingestion, kb, pipeline
+from . import analysis, db, export, ingestion, kb, pipeline
 from .config import settings
-from .models import ApprovalAction, MasterProfile
+from .models import (
+    ApprovalAction,
+    Candidate,
+    EntityType,
+    KBEntity,
+    MasterProfile,
+    Status,
+    TailoredResume,
+)
 from .providers.llm import LLMError, get_llm_provider
 
 STATIC = Path(__file__).parent / "static"
@@ -36,6 +44,20 @@ class JobIn(BaseModel):
 class ApprovalIn(BaseModel):
     action: ApprovalAction
     edited_text: str = ""
+
+
+class EntityUpdateIn(BaseModel):
+    name: str | None = None
+    content: str | None = None
+    domain: str | None = None
+    status: Status | None = None
+
+
+class EntityCreateIn(BaseModel):
+    entity_type: EntityType
+    name: str
+    content: str
+    domain: str = ""
 
 
 # --------------------------------------------------------------------- meta #
@@ -99,6 +121,43 @@ def get_candidate(candidate_id: int) -> dict:
     return {"candidate": candidate, "entities": entities}
 
 
+@app.patch("/api/candidates/{candidate_id}")
+def edit_candidate(candidate_id: int, candidate: Candidate) -> dict:
+    """Let the candidate correct extracted contact/header info by hand (§5)."""
+    if not db.update_candidate(candidate_id, candidate):
+        raise HTTPException(404, "candidate not found")
+    return {"candidate": db.get_candidate(candidate_id)}
+
+
+@app.post("/api/candidates/{candidate_id}/entities")
+def add_entity(candidate_id: int, body: EntityCreateIn) -> KBEntity:
+    """Manually add a profile entity the LLM missed — status ORIGINAL (candidate-entered)."""
+    if db.get_candidate(candidate_id) is None:
+        raise HTTPException(404, "candidate not found")
+    ent = KBEntity(candidate_id=candidate_id, entity_type=body.entity_type,
+                   name=body.name, content=body.content, domain=body.domain,
+                   status=Status.ORIGINAL, source="manual_entry")
+    ent.id = db.insert_entity(ent)
+    return ent
+
+
+@app.patch("/api/entities/{entity_id}")
+def edit_entity(entity_id: int, body: EntityUpdateIn) -> KBEntity:
+    """Edit an extracted entity. A hand-edit of ORIGINAL info stays candidate-owned."""
+    if db.get_entity(entity_id) is None:
+        raise HTTPException(404, "entity not found")
+    db.update_entity(entity_id, name=body.name, content=body.content,
+                     domain=body.domain, status=body.status)
+    return db.get_entity(entity_id)
+
+
+@app.delete("/api/entities/{entity_id}")
+def remove_entity(entity_id: int) -> dict:
+    if not db.delete_entity(entity_id):
+        raise HTTPException(404, "entity not found")
+    return {"deleted": entity_id}
+
+
 # --------------------------------------------------------------------- jobs #
 @app.post("/api/jobs")
 def create_job(job: JobIn) -> dict:
@@ -137,6 +196,39 @@ def generate(job_id: int) -> dict:
         return pipeline.generate_for_job(job_id)
     except LLMError as e:
         raise HTTPException(502, str(e))
+
+
+def _resume_for_export(job_id: int) -> TailoredResume:
+    """Return the stored generated résumé, generating it once if absent."""
+    if db.get_job(job_id) is None:
+        raise HTTPException(404, "job not found")
+    stored = db.get_generation(job_id)
+    if stored is None:
+        try:
+            pipeline.generate_for_job(job_id)   # generates and persists
+        except LLMError as e:
+            raise HTTPException(502, str(e))
+        stored = db.get_generation(job_id)
+    return TailoredResume.model_validate_json(stored)
+
+
+@app.get("/api/jobs/{job_id}/export.pdf")
+def export_pdf(job_id: int) -> Response:
+    resume = _resume_for_export(job_id)
+    pdf = export.build_pdf(resume)
+    fname = f"{resume.candidate.name or 'resume'}_{resume.target_role or 'tailored'}.pdf"
+    return Response(pdf, media_type="application/pdf",
+                    headers={"Content-Disposition": f'attachment; filename="{fname}"'})
+
+
+@app.get("/api/jobs/{job_id}/export.html", response_class=HTMLResponse)
+def export_html(job_id: int) -> str:
+    return export.render_html(_resume_for_export(job_id))
+
+
+@app.get("/api/jobs/{job_id}/export.md", response_class=PlainTextResponse)
+def export_md(job_id: int) -> str:
+    return _resume_for_export(job_id).markdown
 
 
 @app.get("/api/jobs/{job_id}/explain")

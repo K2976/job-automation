@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS job (
     raw_text TEXT NOT NULL,
     role TEXT DEFAULT '',
     requirements_json TEXT DEFAULT '{}',
+    resume_json TEXT DEFAULT '',
     created_at TEXT
 );
 
@@ -84,6 +85,15 @@ def get_conn() -> sqlite3.Connection:
 def init_db() -> None:
     with get_conn() as conn:
         conn.executescript(SCHEMA)
+        _migrate(conn)
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    """Add columns introduced after a DB was first created (SQLite has no IF NOT
+    EXISTS for columns). Cheap and idempotent."""
+    cols = {r["name"] for r in conn.execute("PRAGMA table_info(job)")}
+    if "resume_json" not in cols:
+        conn.execute("ALTER TABLE job ADD COLUMN resume_json TEXT DEFAULT ''")
 
 
 # ------------------------------------------------------------------ candidate #
@@ -178,6 +188,43 @@ def update_entity_status(entity_id: int, status: Status) -> None:
                      (status.value, _now(), entity_id))
 
 
+def update_entity(entity_id: int, *, name: Optional[str] = None,
+                  content: Optional[str] = None, data: Optional[dict] = None,
+                  domain: Optional[str] = None, status: Optional[Status] = None) -> bool:
+    from .models import _now
+    sets, params = ["updated_at=?"], [_now()]
+    if name is not None:
+        sets.append("name=?"); params.append(name)
+    if content is not None:
+        sets.append("content=?"); params.append(content)
+    if data is not None:
+        sets.append("data_json=?"); params.append(json.dumps(data))
+    if domain is not None:
+        sets.append("domain=?"); params.append(domain)
+    if status is not None:
+        sets.append("status=?"); params.append(status.value)
+    params.append(entity_id)
+    with get_conn() as conn:
+        cur = conn.execute(f"UPDATE kb_entity SET {','.join(sets)} WHERE id=?", params)
+        return cur.rowcount > 0
+
+
+def delete_entity(entity_id: int) -> bool:
+    with get_conn() as conn:
+        return conn.execute("DELETE FROM kb_entity WHERE id=?",
+                            (entity_id,)).rowcount > 0
+
+
+def update_candidate(candidate_id: int, c: Candidate) -> bool:
+    with get_conn() as conn:
+        cur = conn.execute(
+            "UPDATE candidate SET name=?,email=?,phone=?,location=?,headline=?,"
+            "links_json=? WHERE id=?",
+            (c.name, c.email, c.phone, c.location, c.headline, json.dumps(c.links),
+             candidate_id))
+        return cur.rowcount > 0
+
+
 # ------------------------------------------------------------------------- job #
 def insert_job(candidate_id: int, raw_text: str, role: str, requirements_json: str) -> int:
     from .models import _now
@@ -193,6 +240,18 @@ def insert_job(candidate_id: int, raw_text: str, role: str, requirements_json: s
 def get_job(job_id: int) -> Optional[sqlite3.Row]:
     with get_conn() as conn:
         return conn.execute("SELECT * FROM job WHERE id=?", (job_id,)).fetchone()
+
+
+def save_generation(job_id: int, resume_json: str) -> None:
+    with get_conn() as conn:
+        conn.execute("UPDATE job SET resume_json=? WHERE id=?", (resume_json, job_id))
+
+
+def get_generation(job_id: int) -> Optional[str]:
+    row = get_job(job_id)
+    if row is None or not row["resume_json"]:
+        return None
+    return row["resume_json"]
 
 
 # ------------------------------------------------------------------ suggestion #
