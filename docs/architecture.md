@@ -3,23 +3,27 @@
 ## Layers
 
 ```
-Single-page UI  (backend/app/static/index.html — vanilla JS, no build step)
-      │  JSON / fetch
+React app  (frontend/ — Vite + TS + Tailwind; 4-step workflow, typed API client)
+      │  JSON / fetch   (built dist/ served by FastAPI; legacy static/index.html fallback)
 FastAPI  (backend/app/api.py — thin: validate, call pipeline, return Pydantic)
       │
 Orchestration  (pipeline.py — the two flows: analyze_job, generate_for_job)
       │
 Stage modules  ── ingestion · kb · retrieval · matching · planning ·
-                   generation · validation · analysis
+                   generation · validation · analysis · export
       │
-Providers  (providers/llm.py, providers/embeddings.py — mock/local defaults)
+Providers  (providers/llm.py, providers/embeddings.py — mock/local defaults;
+             providers/_http.py = retry/timeout for live Gemini/Groq)
       │
 SQLite  (db.py, direct sqlite3)          Skill lexicon (text_utils.py)
 ```
 
 Business logic never lives in the UI or the API handlers — handlers only marshal
-input/output. All stages are pure-ish functions over Pydantic models (`models.py`), which
-makes them independently testable.
+input/output; the React app is presentational over a typed client (`frontend/src/api/`)
+and a state hook (`store.ts`). All stages are pure-ish functions over Pydantic models
+(`models.py`), which makes them independently testable. Export renders the structured
+`TailoredResume` to PDF (reportlab)/HTML/Markdown — the structured model is the single
+source of truth, never pre-baked resume text.
 
 ## The deterministic / LLM split (the core design decision)
 - **Deterministic Python owns**: retrieval scoring, match classification, gap

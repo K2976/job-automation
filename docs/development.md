@@ -5,14 +5,30 @@
 backend/app/
   config.py            env config          db.py         SQLite (direct sqlite3)
   models.py            Pydantic domain     text_utils.py skill lexicon + tokeniser
-  prompts.py           versioned prompts   providers/    llm.py, embeddings.py, gemini*, groq*
+  prompts.py           versioned prompts   providers/    llm.py, embeddings.py, gemini*,
+                                                          groq*, _http.py (retry/timeout)
   ingestion.py  kb.py  retrieval.py  matching.py  planning.py
-  generation.py  validation.py  analysis.py
-  pipeline.py          orchestration       api.py + static/index.html
+  generation.py  validation.py  analysis.py  export.py (PDF/HTML)
+  pipeline.py          orchestration       api.py + static/index.html (fallback UI)
+frontend/              React + Vite + TS + Tailwind
+  src/api/             client.ts (typed fetch) + types.ts (matches models.py)
+  src/store.ts         useEngine() state hook   src/ui.tsx  primitives
+  src/App.tsx          src/panels/  Profile · Analysis · Modifications · Resume
 data/fixtures/         sample profile + JDs (also the eval set)
 tests/                 pytest (offline)
 docs/                  incl. decisions/ (ADRs)
 ```
+
+## Frontend
+```bash
+cd frontend
+npm install
+npm run dev        # Vite dev server :5173, proxies /api -> :8000
+npm run build      # tsc typecheck + production build to dist/ (served by FastAPI)
+npm run typecheck  # tsc --noEmit
+```
+The React app is presentational: all logic goes through `src/api/client.ts` and the
+`useEngine()` hook. `types.ts` is hand-kept in sync with `backend/app/models.py`.
 
 ## Tests
 ```bash

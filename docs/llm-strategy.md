@@ -33,7 +33,16 @@ malformed output, `_parse_json` raises `LLMError` (→ HTTP 502) rather than cor
 verbs (prose lead-ins filtered), skills via `extract_skills`. Prose ops return grounded
 templates. It's a genuine deterministic stand-in, not a stub.
 
+## Reliability
+`providers/_http.py` wraps live calls with a per-request timeout (`LLM_TIMEOUT`) and
+bounded retry with backoff on 429/5xx/timeouts (`LLM_MAX_RETRIES`, honours `Retry-After`).
+Errors never leak the API key. Gemini auth is swappable (`GEMINI_AUTH=query|bearer`) so an
+unusual key format is config, not code, and empty-candidate/safety-block responses raise a
+clear `LLMError`.
+
 ## Cost / fallback
 At V1 scale each analysis is a handful of calls. Gemini embeddings are cached in SQLite to
 avoid re-embedding identical text. Provider free-tier limits are assumed non-permanent;
-switching providers is one env var.
+switching providers is one env var. Live JD analysis returns messier, free-form skill
+strings than the mock's canonical forms — the deterministic downstream tolerates this
+(some exact matches soften to semantic matches); quality tuning is a later phase.

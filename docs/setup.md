@@ -6,12 +6,18 @@
 
 ## Install & run
 ```bash
+# backend
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
+
+# frontend (once — builds the React app FastAPI serves)
+cd frontend && npm install && npm run build && cd ..
+
 uvicorn app.api:app --app-dir backend --reload
 ```
-Open `http://127.0.0.1:8000`.
+Open `http://127.0.0.1:8000`. (Skip the frontend build to run backend-only — a legacy
+static UI is served as a fallback.) For frontend hot-reload: `cd frontend && npm run dev`.
 
 ## Configuration
 All config is env-based (`backend/app/config.py`, read from `.env`).
@@ -28,12 +34,20 @@ All config is env-based (`backend/app/config.py`, read from `.env`).
 
 ## Using a real LLM
 ```bash
-# .env
-LLM_PROVIDER=gemini
-GEMINI_API_KEY=your_key
-# optionally EMBEDDING_PROVIDER=gemini
+# .env  (never .env.example)
+LLM_PROVIDER=groq              # or gemini
+GROQ_API_KEY=your_key          # / GEMINI_API_KEY=your_key
+# GEMINI_AUTH=query            # or "bearer" for OAuth/access tokens
+# LLM_TIMEOUT=60  LLM_MAX_RETRIES=2
 ```
-No code changes — the provider abstraction handles it.
+No code changes — the provider abstraction handles it. Verify a key first with a
+read-only call:
+```bash
+curl -s https://api.groq.com/openai/v1/models -H "Authorization: Bearer $GROQ_API_KEY" | head
+curl -s "https://generativelanguage.googleapis.com/v1beta/models?key=$GEMINI_API_KEY" | head
+```
+If Gemini returns "API key not valid", the key is likely an OAuth token — set
+`GEMINI_AUTH=bearer`.
 
 ## Security
 `.env` and `*.sqlite3` are gitignored. Uploads are type/size validated. Provider keys stay

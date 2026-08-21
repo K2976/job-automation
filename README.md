@@ -33,21 +33,23 @@ JD ─► analyze ─► requirements ─► hybrid retrieval ─► evidence ma
 
 ## Features (V1)
 
-Resume ingestion (PDF/DOCX/text) · candidate knowledge base · JD analysis · hybrid
-retrieval (semantic + keyword + structured filters) · evidence matching · gap analysis ·
-modification plan · approval workflow · tailored generation · claim validation ·
-JD-alignment/ATS analysis · explainability · original-vs-tailored comparison.
+Resume ingestion (PDF/DOCX/text) · candidate knowledge base with inline editing · JD
+analysis · hybrid retrieval (semantic + keyword + structured filters) · evidence matching ·
+gap analysis · modification plan · approval workflow · tailored generation · claim
+validation · JD-alignment/ATS analysis · explainability · original-vs-tailored comparison ·
+PDF/HTML/Markdown export · reusable role-view snapshots · live Gemini/Groq or offline mock.
 
 ## Architecture at a glance
 
 | Concern | Choice | Notes |
 |---|---|---|
 | API | FastAPI + Pydantic | thin; logic lives in stage modules |
-| UI | single-page vanilla JS | backend-first; Next.js is future work |
+| Frontend | **React + Vite + TypeScript + Tailwind** | 4-step workflow UI — [ADR-005](docs/decisions/ADR-005-vite-react-over-nextjs.md) |
 | Storage | **SQLite** (stdlib) | stands in for Postgres — [ADR-001](docs/decisions/ADR-001-sqlite-over-postgres.md) |
 | Vector search | **numpy cosine** | KB is tiny; no vector DB — [ADR-002](docs/decisions/ADR-002-numpy-over-pgvector.md) |
 | LLM | `LLMProvider`: mock / Gemini / Groq | [ADR-003](docs/decisions/ADR-003-llm-provider-abstraction.md) |
 | Embeddings | `EmbeddingProvider`: local TF-IDF / Gemini | [ADR-004](docs/decisions/ADR-004-local-embedding-default.md) |
+| Export | reportlab (PDF), HTML, Markdown | over the structured résumé model |
 
 The **mock LLM + local TF-IDF embedder are the defaults**, so the whole system runs and
 is tested fully offline with **no API keys**. Gemini/Groq are opt-in via env vars.
@@ -55,16 +57,44 @@ is tested fully offline with **no API keys**. Gemini/Groq are opt-in via env var
 ## Quick start
 
 ```bash
+# 1. Backend
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env                      # defaults are offline (mock + local)
 
+# 2. Frontend (once — builds the React app FastAPI serves)
+cd frontend && npm install && npm run build && cd ..
+
+# 3. Run
 uvicorn app.api:app --app-dir backend --reload
 # open http://127.0.0.1:8000
 ```
 
-In the UI: **Load sample candidate → pick a sample JD → Analyze → accept/reject
-suggestions → Generate**.
+The 4-step UI: **Profile** (load sample candidate / paste résumé, edit the knowledge base)
+→ **Analysis** (pick a JD, see matches/gaps/evidence, click a requirement for the
+explanation) → **Modifications** (accept/edit/reject) → **Résumé** (preview, validate,
+alignment score, compare, and export PDF/HTML/Markdown).
+
+Skip step 2 to run backend-only — FastAPI falls back to a legacy static UI when the React
+app isn't built.
+
+### Frontend dev (hot reload)
+```bash
+cd frontend && npm run dev      # Vite on :5173, proxies /api to :8000
+```
+
+### Live LLM providers
+Set in `.env` (never in `.env.example`):
+```bash
+LLM_PROVIDER=groq      # or gemini
+GROQ_API_KEY=...        # / GEMINI_API_KEY=...
+# GEMINI_AUTH=query     # or "bearer" if the key is an OAuth/access token
+```
+Verify a key with a read-only call before relying on it:
+```bash
+curl -s https://api.groq.com/openai/v1/models -H "Authorization: Bearer $GROQ_API_KEY" | head
+curl -s "https://generativelanguage.googleapis.com/v1beta/models?key=$GEMINI_API_KEY" | head
+```
 
 ## Environment variables
 
@@ -74,6 +104,8 @@ suggestions → Generate**.
 | `LLM_PROVIDER` | `mock` | `mock` \| `gemini` \| `groq` |
 | `LLM_MODEL` | *(provider default)* | optional model override |
 | `GEMINI_API_KEY` / `GROQ_API_KEY` | — | only if using that provider |
+| `GEMINI_AUTH` | `query` | `query` (API key) \| `bearer` (OAuth token) |
+| `LLM_TIMEOUT` / `LLM_MAX_RETRIES` | `60` / `2` | per-request timeout, retry on 429/5xx |
 | `EMBEDDING_PROVIDER` | `local` | `local` \| `gemini` |
 | `RETRIEVAL_TOP_K`, `SEMANTIC_WEIGHT`, `KEYWORD_WEIGHT` | `8`, `0.6`, `0.4` | retrieval tuning |
 
@@ -82,11 +114,12 @@ Never commit `.env`. See [`docs/setup.md`](docs/setup.md).
 ## Development & tests
 
 ```bash
-pytest -q                 # 29 tests, fully offline (PDF test needs dev-only reportlab, else skips)
+pytest -q                 # 35 backend tests, fully offline
+cd frontend && npm run build   # tsc typecheck + production build
 ```
 
-Structure: `backend/app/` (stage modules), `data/fixtures/` (sample profile + JDs, doubles
-as the RAG eval set), `tests/`, `docs/`.
+Structure: `backend/app/` (stage modules), `frontend/` (React app), `data/fixtures/`
+(sample profile + JDs, doubles as the RAG eval set), `tests/`, `docs/`.
 See [`docs/development.md`](docs/development.md) and [`docs/architecture.md`](docs/architecture.md).
 
 ## Documentation
@@ -99,6 +132,9 @@ See [`docs/development.md`](docs/development.md) and [`docs/architecture.md`](do
 
 ## Status
 
-V1 core is implemented and tested end-to-end on the mock provider. Real Gemini/Groq
-providers are wired but require keys. Job discovery (V2) and application automation (V3)
-are intentionally **not** built — see the [roadmap](docs/roadmap.md).
+V1 is complete: full React frontend, live Gemini/Groq providers (hardened with retry/
+timeout/auth handling), résumé PDF/HTML/Markdown export, profile editing, role-view
+snapshots, and the full analyze → approve → generate → validate loop. 35 backend tests +
+a typechecked frontend build, all offline on the mock provider. Job discovery (V2) and
+application automation (V3) are intentionally **not** built — see the
+[roadmap](docs/roadmap.md).
