@@ -84,9 +84,16 @@ export default function Profile({ engine }: { engine: Engine }) {
     return (
       <Card title="Get started">
         <p className="mb-3 text-sm text-slate-400">
-          Load the bundled sample candidate, or paste résumé text to build a profile.
+          Upload a résumé (PDF/DOCX/TXT), load the bundled sample, or paste text.
         </p>
-        <Button onClick={engine.seed}>Load sample candidate</Button>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button onClick={engine.seed}>Load sample candidate</Button>
+          <label className="cursor-pointer rounded-md border border-slate-600 px-3 py-1.5 text-[13px] text-slate-200 hover:bg-slate-700/40">
+            Upload résumé
+            <input type="file" accept=".pdf,.docx,.txt,.md" className="hidden"
+              onChange={e => { const f = e.target.files?.[0]; if (f) engine.ingestFile(f) }} />
+          </label>
+        </div>
         <PasteResume engine={engine} />
       </Card>
     )

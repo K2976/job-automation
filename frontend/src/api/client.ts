@@ -51,6 +51,15 @@ export const api = {
     return res.json()
   },
 
+  // Parse an uploaded résumé file (PDF/DOCX/TXT) into a (non-persisted) profile.
+  ingestFile: async (file: File): Promise<unknown> => {
+    const form = new FormData()
+    form.append('file', file)
+    const res = await fetch('/api/ingest', { method: 'POST', body: form })
+    if (!res.ok) throw new Error((await res.json()).detail ?? res.statusText)
+    return res.json()
+  },
+
   // Persist a reviewed profile as the candidate knowledge base.
   createCandidate: (profile: unknown) =>
     req<{ candidate_id: number }>('/api/candidates',

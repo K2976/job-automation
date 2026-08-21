@@ -23,6 +23,7 @@ export interface Engine {
   setJd: (s: string) => void
   seed: () => Promise<void>
   ingest: (text: string) => Promise<void>
+  ingestFile: (file: File) => Promise<void>
   editCandidate: (patch: Partial<Candidate>) => Promise<void>
   addEntity: (e: { entity_type: string; name: string; content: string }) => Promise<void>
   editEntity: (id: number, patch: Partial<KBEntity>) => Promise<void>
@@ -71,11 +72,14 @@ export function useEngine(): Engine {
     await loadCandidate(candidate_id)
   })
 
-  const ingest = (text: string) => run('Parsing résumé & building profile…', async () => {
-    const profile = await api.ingestText(text)        // parse into structured profile
+  const buildFrom = async (profile: unknown) => {
     const { candidate_id } = await api.createCandidate(profile)  // persist
-    await loadCandidate(candidate_id)                 // candidate can edit afterwards
-  })
+    await loadCandidate(candidate_id)                            // editable afterwards
+  }
+  const ingest = (text: string) => run('Parsing résumé & building profile…', async () =>
+    buildFrom(await api.ingestText(text)))
+  const ingestFile = (file: File) => run('Extracting & parsing résumé…', async () =>
+    buildFrom(await api.ingestFile(file)))
 
   const editCandidate = (patch: Partial<Candidate>) =>
     run('Saving…', async () => {
@@ -138,7 +142,7 @@ export function useEngine(): Engine {
   return {
     health, candidate, entities, sampleJds, jdText, analysis, suggestions,
     generation, roleProfiles, step, busy, error,
-    setStep, setJd, seed, ingest, editCandidate, addEntity, editEntity, deleteEntity,
-    analyze, approve, generate, saveRoleProfile,
+    setStep, setJd, seed, ingest, ingestFile, editCandidate, addEntity, editEntity,
+    deleteEntity, analyze, approve, generate, saveRoleProfile,
   }
 }

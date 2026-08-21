@@ -34,6 +34,33 @@ Nice to have:
     assert "spark" in req.preferred_skills
 
 
+def test_ingest_file_upload_endpoint():
+    """The résumé *file* upload path (the UI's primary ingest) end to end."""
+    import io
+
+    from fastapi.testclient import TestClient
+
+    from app.api import app
+
+    docx = pytest.importorskip("docx")
+    doc = docx.Document()
+    doc.add_paragraph("Jane Doe")
+    doc.add_paragraph("jane@doe.com")
+    doc.add_paragraph("Skills: Python, PostgreSQL")
+    buf = io.BytesIO()
+    doc.save(buf)
+
+    client = TestClient(app)
+    r = client.post("/api/ingest",
+                    files={"file": ("resume.docx", buf.getvalue(),
+                                    "application/vnd.openxmlformats-officedocument"
+                                    ".wordprocessingml.document")})
+    assert r.status_code == 200
+    profile = r.json()
+    assert profile["candidate"]["email"] == "jane@doe.com"
+    assert any(s["name"] == "postgresql" for s in profile["skills"])
+
+
 def test_mock_resume_parse_extracts_contact_and_skills():
     llm = get_llm_provider("mock")
     profile = ingest_resume_text(
