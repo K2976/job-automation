@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     llm_model: str = ""              # optional override
     gemini_api_key: str = ""
     groq_api_key: str = ""
+    gemini_auth: str = "query"       # query (?key=) | bearer (Authorization header)
+    llm_timeout: float = 60.0        # seconds per request
+    llm_max_retries: int = 2         # retries on 429 / 5xx / timeout
 
     embedding_provider: str = "local"  # local | gemini
 

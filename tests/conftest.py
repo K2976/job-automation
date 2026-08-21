@@ -9,8 +9,11 @@ from app import db, pipeline
 
 @pytest.fixture(autouse=True)
 def isolated_db(tmp_path: Path):
-    """Every test gets a fresh SQLite file."""
+    """Every test gets a fresh SQLite file and is pinned to the offline providers, so
+    the suite never depends on API keys or hits a live provider (regardless of .env)."""
     settings.database_url = str(tmp_path / "test.sqlite3")
+    settings.llm_provider = "mock"
+    settings.embedding_provider = "local"
     db.init_db()
     yield
 

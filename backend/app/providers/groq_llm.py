@@ -1,9 +1,8 @@
 """Groq LLM provider (OpenAI-compatible REST via httpx)."""
 from __future__ import annotations
 
-import httpx
-
 from ..config import settings
+from ._http import post_json
 from .llm import LLMError, LLMProvider
 
 _DEFAULT_MODEL = "llama-3.3-70b-versatile"
@@ -28,9 +27,8 @@ class GroqLLMProvider(LLMProvider):
             ],
         }
         headers = {"Authorization": f"Bearer {settings.groq_api_key}"}
+        data = post_json(_URL, json=payload, headers=headers)
         try:
-            r = httpx.post(_URL, json=payload, headers=headers, timeout=60)
-            r.raise_for_status()
-            return r.json()["choices"][0]["message"]["content"]
-        except (httpx.HTTPError, KeyError, IndexError) as e:
-            raise LLMError(f"Groq request failed: {e}") from e
+            return data["choices"][0]["message"]["content"]
+        except (KeyError, IndexError) as e:
+            raise LLMError(f"Groq returned an unexpected response shape: {e}") from e
