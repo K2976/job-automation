@@ -16,11 +16,12 @@ docs/                  incl. decisions/ (ADRs)
 
 ## Tests
 ```bash
-pytest -q          # 27 tests, no keys, no network
+pytest -q          # 29 tests, no keys, no network
 ```
 `tests/conftest.py` gives each test an isolated temp SQLite DB and a `candidate_id`
 fixture. Coverage: text utils, retrieval/matching, provenance transitions, validation,
-ATS, ingestion/JD parsing, full pipeline e2e (both JDs), and the API via TestClient.
+ATS, ingestion/JD parsing, binary PDF/DOCX extraction, full pipeline e2e (both JDs), and
+the API via TestClient. The PDF test needs the dev-only `reportlab` (skips if absent).
 
 ## Conventions
 - Keep API handlers thin; logic goes in stage modules over Pydantic models.

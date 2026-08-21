@@ -23,3 +23,4 @@ pytest>=8.0
 
 # Optional, opt-in only (EMBEDDING_PROVIDER unaffected by default):
 #   sentence-transformers  -> heavier local semantic embeddings (pulls torch)
+#   reportlab              -> dev-only; only needed to run the PDF ingestion test

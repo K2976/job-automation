@@ -82,7 +82,7 @@ Never commit `.env`. See [`docs/setup.md`](docs/setup.md).
 ## Development & tests
 
 ```bash
-pytest -q                 # 27 tests, fully offline
+pytest -q                 # 29 tests, fully offline (PDF test needs dev-only reportlab, else skips)
 ```
 
 Structure: `backend/app/` (stage modules), `data/fixtures/` (sample profile + JDs, doubles

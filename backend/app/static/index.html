@@ -27,9 +27,11 @@
   table { width:100%; border-collapse:collapse; font-size:13px; }
   td,th { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
   .pill { display:inline-block; padding:1px 8px; border-radius:20px; font-size:11px; font-weight:600; }
-  .STRONG_MATCH,.SUPPORTED_BY_ORIGINAL { background:rgba(63,185,80,.15); color:var(--ok); }
-  .PARTIAL_MATCH,.WEAK_MATCH,.SUPPORTED_BY_USER_CONFIRMATION { background:rgba(210,153,34,.15); color:var(--warn); }
-  .MISSING,.UNSUPPORTED,.USER_CONFIRMATION_REQUIRED,.AI_SUGGESTED_NOT_APPROVED { background:rgba(248,81,73,.15); color:var(--bad); }
+  .STRONG_MATCH,.SUPPORTED_BY_ORIGINAL,.USER_CONFIRMED,.USER_EDITED { background:rgba(63,185,80,.15); color:var(--ok); }
+  .PARTIAL_MATCH,.WEAK_MATCH,.SUPPORTED_BY_USER_CONFIRMATION,.AI_SUGGESTED { background:rgba(210,153,34,.15); color:var(--warn); }
+  .MISSING,.UNSUPPORTED,.USER_CONFIRMATION_REQUIRED,.AI_SUGGESTED_NOT_APPROVED,.REJECTED { background:rgba(248,81,73,.15); color:var(--bad); }
+  a.explain { color:var(--fg); text-decoration:underline dotted; cursor:pointer; }
+  #explainBox { margin-top:10px; }
   .mut { color:var(--mut); } .small { font-size:12px; }
   pre { background:#0d0f13; border:1px solid var(--line); border-radius:6px; padding:14px;
         overflow:auto; font-size:12px; white-space:pre-wrap; }
@@ -119,7 +121,8 @@ $('#analyzeBtn').onclick = async () => {
 
 function renderAnalysis(a) {
   const rows = a.matches.map(m => `<tr>
-    <td>${pill(m.match_status)}</td><td>${m.requirement}</td>
+    <td>${pill(m.match_status)}</td>
+    <td><a class="explain" data-req="${encodeURIComponent(m.requirement)}">${m.requirement}</a></td>
     <td class="mut small">${m.kind}</td><td class="mut small">${m.score}</td>
     <td class="mut small">${(m.evidence[0]||{}).name||''}</td></tr>`).join('');
 
@@ -139,11 +142,22 @@ function renderAnalysis(a) {
     <div class="card"><h2>3 · Match analysis — ${a.requirements.role||'role'}</h2>
       <table><thead><tr><th>Status</th><th>Requirement</th><th>Kind</th><th>Score</th><th>Top evidence</th></tr></thead>
       <tbody>${rows}</tbody></table>
+      <div id="explainBox" class="small mut">Click a requirement to see why it's classified that way.</div>
       <p class="small mut">Emphasize: ${a.plan.emphasize.slice(0,8).join(', ')}<br>
       De-emphasize: ${a.plan.deemphasize.slice(0,8).join(', ')}</p></div>
     <div class="card"><h2>Suggested modifications — your approval required</h2>
       <p class="small mut">Nothing is applied until you accept it. Only confirm skills you genuinely have.</p>
       ${sugg}</div>`;
+
+  document.querySelectorAll('a.explain').forEach(a => a.onclick = async () => {
+    const req = decodeURIComponent(a.dataset.req);
+    const box = $('#explainBox'); box.textContent = 'Loading…';
+    try {
+      const e = await api(`/api/jobs/${jobId}/explain?requirement=${encodeURIComponent(req)}`);
+      const ev = (e.evidence||[]).map(x => `${x.name} (${x.type}, ${x.score})`).join('; ') || 'none';
+      box.innerHTML = `<b>Why "${req}"?</b> ${pill(e.status||'MISSING')} — ${e.reason||''}<br>Evidence: ${ev}`;
+    } catch(err){ box.textContent = err.message; }
+  });
 
   document.querySelectorAll('.sugg').forEach(el => {
     const id = el.dataset.id, st = el.querySelector('.st'), sg = el.querySelector('.sg');
