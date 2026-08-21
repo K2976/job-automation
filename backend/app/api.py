@@ -8,10 +8,11 @@ from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, Response
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from . import analysis, db, export, ingestion, kb, pipeline
-from .config import settings
+from .config import REPO_ROOT, settings
 from .models import (
     ApprovalAction,
     Candidate,
@@ -24,6 +25,7 @@ from .models import (
 from .providers.llm import LLMError, get_llm_provider
 
 STATIC = Path(__file__).parent / "static"
+FRONTEND_DIST = REPO_ROOT / "frontend" / "dist"
 
 
 @asynccontextmanager
@@ -270,6 +272,13 @@ def explain(job_id: int, requirement: str) -> dict:
 
 
 # ----------------------------------------------------------------------- UI #
+# Serve the built React app if present; otherwise fall back to the legacy single-page
+# static UI so a python-only checkout (no `npm run build`) still works.
+if (FRONTEND_DIST / "index.html").exists():
+    app.mount("/assets", StaticFiles(directory=FRONTEND_DIST / "assets"), name="assets")
+
+
 @app.get("/")
 def index() -> FileResponse:
-    return FileResponse(STATIC / "index.html")
+    built = FRONTEND_DIST / "index.html"
+    return FileResponse(built if built.exists() else STATIC / "index.html")
