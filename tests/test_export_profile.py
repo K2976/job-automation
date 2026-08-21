@@ -61,3 +61,13 @@ def test_profile_editing(candidate_id):
 def test_generation_is_persisted(candidate_id):
     _, job_id = _generate(candidate_id)
     assert db.get_generation(job_id) is not None
+
+
+def test_role_profile_snapshot(candidate_id):
+    _, job_id = _generate(candidate_id)
+    client = TestClient(app)
+    r = client.post(f"/api/candidates/{candidate_id}/role-profiles",
+                    json={"name": "Data Engineer view", "job_id": job_id})
+    assert r.status_code == 200 and r.json()["target_role"] == "Data Engineer"
+    listed = client.get(f"/api/candidates/{candidate_id}/role-profiles").json()
+    assert listed["role_profiles"][0]["name"] == "Data Engineer view"

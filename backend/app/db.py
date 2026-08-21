@@ -65,6 +65,15 @@ CREATE TABLE IF NOT EXISTS suggestion (
 );
 CREATE INDEX IF NOT EXISTS idx_sugg_job ON suggestion(job_id);
 
+CREATE TABLE IF NOT EXISTS role_profile (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    candidate_id INTEGER NOT NULL REFERENCES candidate(id),
+    name TEXT NOT NULL,
+    target_role TEXT DEFAULT '',
+    job_id INTEGER REFERENCES job(id),
+    created_at TEXT
+);
+
 CREATE TABLE IF NOT EXISTS embedding_cache (
     provider TEXT NOT NULL,
     text_hash TEXT NOT NULL,
@@ -296,6 +305,24 @@ def update_suggestion(suggestion_id: str, status: Status, edited_text: str = "")
     with get_conn() as conn:
         conn.execute("UPDATE suggestion SET status=?, edited_text=? WHERE id=?",
                      (status.value, edited_text, suggestion_id))
+
+
+# ----------------------------------------------------------- role profiles #
+def insert_role_profile(candidate_id: int, name: str, target_role: str,
+                        job_id: int) -> int:
+    from .models import _now
+    with get_conn() as conn:
+        cur = conn.execute(
+            "INSERT INTO role_profile(candidate_id,name,target_role,job_id,created_at) "
+            "VALUES (?,?,?,?,?)", (candidate_id, name, target_role, job_id, _now()))
+        return int(cur.lastrowid)
+
+
+def list_role_profiles(candidate_id: int) -> list[dict]:
+    with get_conn() as conn:
+        rows = conn.execute("SELECT * FROM role_profile WHERE candidate_id=? "
+                            "ORDER BY id DESC", (candidate_id,)).fetchall()
+    return [dict(r) for r in rows]
 
 
 # ------------------------------------------------------------- embedding cache #

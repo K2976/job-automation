@@ -198,6 +198,28 @@ def generate(job_id: int) -> dict:
         raise HTTPException(502, str(e))
 
 
+class RoleProfileIn(BaseModel):
+    name: str
+    job_id: int
+
+
+@app.post("/api/candidates/{candidate_id}/role-profiles")
+def create_role_profile(candidate_id: int, body: RoleProfileIn) -> dict:
+    """Save a named, reusable role-specific view (a snapshot of an analyzed job with its
+    approved modifications). A view over the master profile — not a separate profile."""
+    job = db.get_job(body.job_id)
+    if job is None or job["candidate_id"] != candidate_id:
+        raise HTTPException(404, "job not found for this candidate")
+    rp_id = db.insert_role_profile(candidate_id, body.name, job["role"], body.job_id)
+    return {"id": rp_id, "name": body.name, "target_role": job["role"],
+            "job_id": body.job_id}
+
+
+@app.get("/api/candidates/{candidate_id}/role-profiles")
+def list_role_profiles(candidate_id: int) -> dict:
+    return {"role_profiles": db.list_role_profiles(candidate_id)}
+
+
 def _resume_for_export(job_id: int) -> TailoredResume:
     """Return the stored generated résumé, generating it once if absent."""
     if db.get_job(job_id) is None:
