@@ -34,6 +34,15 @@ class Settings(BaseSettings):
 
     max_upload_bytes: int = 5 * 1024 * 1024
 
+    # Comma-separated allowed origins for the split deployment (frontend on a different
+    # host than the API). "*" is fine here — there is no auth/cookies — but note CORS is
+    # not a security boundary. See docs/deployment.md.
+    cors_origins: str = "*"
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
     @property
     def db_path(self) -> Path:
         p = Path(self.database_url)

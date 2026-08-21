@@ -90,6 +90,14 @@ LLM_PROVIDER=groq      # or gemini
 GROQ_API_KEY=...        # / GEMINI_API_KEY=...
 # GEMINI_AUTH=query     # or "bearer" if the key is an OAuth/access token
 ```
+Defaults: Groq → `openai/gpt-oss-120b`, Gemini → `gemini-2.5-flash` (override with
+`LLM_MODEL`).
+
+### Deploy (Vercel + Render)
+Frontend on Vercel, backend on Render — see [`docs/deployment.md`](docs/deployment.md)
+(`render.yaml` + `vercel.json` included). ⚠️ The public API has no auth, so a live-key
+deploy lets anyone spend your LLM quota — it defaults to `LLM_PROVIDER=mock`; flip to live
+only while demoing and set provider spend caps.
 Verify a key with a read-only call before relying on it:
 ```bash
 curl -s https://api.groq.com/openai/v1/models -H "Authorization: Bearer $GROQ_API_KEY" | head

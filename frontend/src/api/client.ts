@@ -3,8 +3,21 @@ import type {
   Health, KBEntity, ModificationSuggestion, RoleProfile,
 } from './types'
 
+// Empty base = same origin (local dev via Vite proxy, or the FastAPI-served build).
+// On a split deploy (Vercel frontend + Render backend) set VITE_API_BASE at build time.
+const BASE = (import.meta.env.VITE_API_BASE ?? '').replace(/\/$/, '')
+const url = (path: string) => BASE + path
+
+async function postForm(path: string, fields: Record<string, string | File>): Promise<unknown> {
+  const form = new FormData()
+  for (const [k, v] of Object.entries(fields)) form.append(k, v)
+  const res = await fetch(url(path), { method: 'POST', body: form })
+  if (!res.ok) throw new Error((await res.json()).detail ?? res.statusText)
+  return res.json()
+}
+
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(path, {
+  const res = await fetch(url(path), {
     headers: { 'Content-Type': 'application/json' },
     ...init,
   })
@@ -43,22 +56,14 @@ export const api = {
     req<{ deleted: number }>(`/api/entities/${eid}`, { method: 'DELETE' }),
 
   // Parse résumé text into a (non-persisted) structured profile for review.
-  ingestText: async (text: string): Promise<unknown> => {
-    const form = new FormData()
-    form.append('text', text)
-    const res = await fetch('/api/ingest', { method: 'POST', body: form })
-    if (!res.ok) throw new Error((await res.json()).detail ?? res.statusText)
-    return res.json()
-  },
+  ingestText: (text: string) => postForm('/api/ingest', { text }),
 
   // Parse an uploaded résumé file (PDF/DOCX/TXT) into a (non-persisted) profile.
-  ingestFile: async (file: File): Promise<unknown> => {
-    const form = new FormData()
-    form.append('file', file)
-    const res = await fetch('/api/ingest', { method: 'POST', body: form })
-    if (!res.ok) throw new Error((await res.json()).detail ?? res.statusText)
-    return res.json()
-  },
+  ingestFile: (file: File) => postForm('/api/ingest', { file }),
+
+  // Extract plain text from an uploaded JD file (PDF/DOCX/TXT).
+  extractJd: (file: File) =>
+    postForm('/api/extract-jd', { file }) as Promise<{ text: string }>,
 
   // Persist a reviewed profile as the candidate knowledge base.
   createCandidate: (profile: unknown) =>
@@ -91,5 +96,5 @@ export const api = {
     req<{ role_profiles: RoleProfile[] }>(`/api/candidates/${candidateId}/role-profiles`),
 
   exportUrl: (jobId: number, fmt: 'pdf' | 'html' | 'md') =>
-    `/api/jobs/${jobId}/export.${fmt}`,
+    url(`/api/jobs/${jobId}/export.${fmt}`),
 }

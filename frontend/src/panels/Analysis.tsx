@@ -18,10 +18,18 @@ function Chips({ items, muted }: { items: string[]; muted?: boolean }) {
 function JdInput({ engine }: { engine: Engine }) {
   return (
     <Card title="Job description">
-      <div className="mb-2 flex flex-wrap gap-2">
+      <div className="mb-2 flex flex-wrap items-center gap-2">
         {Object.entries(engine.sampleJds).map(([role, text]) => (
           <Button key={role} variant="ghost" onClick={() => engine.setJd(text)}>{role}</Button>
         ))}
+        <label className="cursor-pointer rounded-md border border-slate-600 px-3 py-1.5 text-[13px] text-slate-200 hover:bg-slate-700/40">
+          Upload JD file
+          <input type="file" accept=".pdf,.docx,.txt,.md" className="hidden"
+            onChange={async e => {
+              const f = e.target.files?.[0]
+              if (f) { const { text } = await api.extractJd(f); engine.setJd(text) }
+            }} />
+        </label>
       </div>
       <textarea value={engine.jdText} onChange={e => engine.setJd(e.target.value)}
         rows={8} placeholder="Paste a job description…"

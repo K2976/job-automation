@@ -9,6 +9,7 @@ Base URL: `http://127.0.0.1:8000`. All bodies are JSON unless noted. Errors retu
 | GET | `/api/fixtures/jds` | — | `{role: jd_text}` sample JDs |
 | POST | `/api/candidates/seed-fixture` | — | `{candidate_id, candidate}` |
 | POST | `/api/ingest` | multipart `file` **or** form `text` | parsed `MasterProfile` (not persisted) |
+| POST | `/api/extract-jd` | multipart `file` | `{text}` extracted from a JD file |
 | POST | `/api/candidates` | `MasterProfile` | `{candidate_id}` |
 | GET | `/api/candidates/{id}` | — | `{candidate, entities}` |
 | PATCH | `/api/candidates/{id}` | `Candidate` fields | `{candidate}` |

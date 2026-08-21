@@ -5,7 +5,7 @@ from ..config import settings
 from ._http import post_json
 from .llm import LLMError, LLMProvider
 
-_DEFAULT_MODEL = "llama-3.3-70b-versatile"
+_DEFAULT_MODEL = "openai/gpt-oss-120b"  # supports json_mode + structured_outputs
 _URL = "https://api.groq.com/openai/v1/chat/completions"
 
 

@@ -61,6 +61,28 @@ def test_ingest_file_upload_endpoint():
     assert any(s["name"] == "postgresql" for s in profile["skills"])
 
 
+def test_extract_jd_file_endpoint():
+    from fastapi.testclient import TestClient
+
+    from app.api import app
+
+    client = TestClient(app)
+    r = client.post("/api/extract-jd",
+                    files={"file": ("jd.txt", b"Data Engineer\nRequired: Python, SQL",
+                                    "text/plain")})
+    assert r.status_code == 200
+    assert "Python" in r.json()["text"]
+
+
+def test_cors_header_present():
+    from fastapi.testclient import TestClient
+
+    from app.api import app
+
+    r = TestClient(app).get("/api/health", headers={"Origin": "https://example.com"})
+    assert r.headers.get("access-control-allow-origin") == "*"
+
+
 def test_mock_resume_parse_extracts_contact_and_skills():
     llm = get_llm_provider("mock")
     profile = ingest_resume_text(

@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -35,6 +36,16 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Adaptive Resume Engineer", version="0.1.0", lifespan=lifespan)
+
+# Allow the frontend to call the API when they're deployed on different hosts
+# (e.g. Vercel + Render). No cookies/credentials are used.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origin_list,
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 # ------------------------------------------------------------------ requests #
@@ -105,6 +116,16 @@ async def ingest(file: UploadFile | None = File(default=None),
         raise HTTPException(400, str(e))
     except LLMError as e:
         raise HTTPException(502, str(e))
+
+
+@app.post("/api/extract-jd")
+async def extract_jd(file: UploadFile = File(...)) -> dict:
+    """Extract plain text from an uploaded JD file (PDF/DOCX/TXT) for the JD box."""
+    try:
+        text = ingestion.extract_text(file.filename or "jd.txt", await file.read())
+    except ingestion.IngestionError as e:
+        raise HTTPException(400, str(e))
+    return {"text": text}
 
 
 @app.post("/api/candidates")
