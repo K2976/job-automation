@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Adaptive Resume Engineer</title>
+<style>
+  :root { --bg:#0f1115; --card:#1a1d24; --line:#2a2f3a; --fg:#e6e8ec; --mut:#9aa3b2;
+          --acc:#5b9dff; --ok:#3fb950; --warn:#d29922; --bad:#f85149; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+         background:var(--bg); color:var(--fg); }
+  header { padding:16px 24px; border-bottom:1px solid var(--line); display:flex;
+           align-items:baseline; gap:12px; }
+  header h1 { font-size:18px; margin:0; } header small { color:var(--mut); }
+  main { max-width:960px; margin:0 auto; padding:24px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px;
+          padding:16px 18px; margin-bottom:18px; }
+  .card h2 { margin:0 0 12px; font-size:15px; color:var(--acc); }
+  button { background:var(--acc); color:#fff; border:0; border-radius:6px;
+           padding:8px 14px; font-size:13px; cursor:pointer; }
+  button.ghost { background:transparent; border:1px solid var(--line); color:var(--fg); }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+  textarea { width:100%; min-height:150px; background:#0d0f13; color:var(--fg);
+             border:1px solid var(--line); border-radius:6px; padding:10px; font:12px/1.5 monospace; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:8px 0; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  td,th { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+  .pill { display:inline-block; padding:1px 8px; border-radius:20px; font-size:11px; font-weight:600; }
+  .STRONG_MATCH,.SUPPORTED_BY_ORIGINAL { background:rgba(63,185,80,.15); color:var(--ok); }
+  .PARTIAL_MATCH,.WEAK_MATCH,.SUPPORTED_BY_USER_CONFIRMATION { background:rgba(210,153,34,.15); color:var(--warn); }
+  .MISSING,.UNSUPPORTED,.USER_CONFIRMATION_REQUIRED,.AI_SUGGESTED_NOT_APPROVED { background:rgba(248,81,73,.15); color:var(--bad); }
+  .mut { color:var(--mut); } .small { font-size:12px; }
+  pre { background:#0d0f13; border:1px solid var(--line); border-radius:6px; padding:14px;
+        overflow:auto; font-size:12px; white-space:pre-wrap; }
+  .sugg { border:1px solid var(--line); border-radius:8px; padding:10px 12px; margin:8px 0; }
+  .sugg .t { font-weight:600; } .grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .bar { height:8px; background:#0d0f13; border-radius:6px; overflow:hidden; }
+  .bar > i { display:block; height:100%; background:var(--acc); }
+  .kpi { font-size:22px; font-weight:700; } .err { color:var(--bad); }
+  @media (max-width:700px){ .grid{grid-template-columns:1fr;} }
+</style>
+</head>
+<body>
+<header>
+  <h1>Adaptive Resume Engineer</h1>
+  <small id="status">connecting…</small>
+</header>
+<main>
+  <div class="card">
+    <h2>1 · Candidate</h2>
+    <div class="row">
+      <button id="seedBtn">Load sample candidate</button>
+      <span id="candInfo" class="mut">No candidate loaded.</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>2 · Job description</h2>
+    <div class="row" id="jdButtons"></div>
+    <textarea id="jd" placeholder="Paste a job description…"></textarea>
+    <div class="row"><button id="analyzeBtn" disabled>Analyze match</button></div>
+  </div>
+
+  <div id="analysis"></div>
+
+  <div class="card" id="genCard" style="display:none">
+    <h2>4 · Generate</h2>
+    <button id="genBtn">Generate tailored resume</button>
+  </div>
+
+  <div id="output"></div>
+</main>
+
+<script>
+const $ = s => document.querySelector(s);
+let candidateId = null, jobId = null, lastAnalysis = null;
+
+async function api(path, opts) {
+  const r = await fetch(path, opts);
+  if (!r.ok) throw new Error((await r.json().catch(()=>({}))).detail || r.statusText);
+  return r.json();
+}
+const pill = s => `<span class="pill ${s}">${s.replace(/_/g,' ')}</span>`;
+
+api('/api/health').then(h => $('#status').textContent =
+  `LLM: ${h.llm_provider} · embeddings: ${h.embedding_provider}`);
+
+api('/api/fixtures/jds').then(jds => {
+  for (const [name, text] of Object.entries(jds)) {
+    const b = document.createElement('button');
+    b.className = 'ghost'; b.textContent = name;
+    b.onclick = () => $('#jd').value = text;
+    $('#jdButtons').appendChild(b);
+  }
+});
+
+$('#seedBtn').onclick = async () => {
+  const r = await api('/api/candidates/seed-fixture', {method:'POST'});
+  candidateId = r.candidate_id;
+  $('#candInfo').innerHTML = `<b>${r.candidate.name}</b> — ${r.candidate.headline}`;
+  $('#analyzeBtn').disabled = false;
+};
+
+$('#analyzeBtn').onclick = async () => {
+  const jd = $('#jd').value.trim();
+  if (!candidateId || !jd) return;
+  $('#analysis').innerHTML = '<div class="card mut">Analyzing…</div>';
+  try {
+    lastAnalysis = await api('/api/jobs', {method:'POST',
+      headers:{'content-type':'application/json'},
+      body:JSON.stringify({candidate_id:candidateId, jd_text:jd})});
+    jobId = lastAnalysis.job_id;
+    renderAnalysis(lastAnalysis);
+    $('#genCard').style.display = 'block';
+    $('#output').innerHTML = '';
+  } catch(e){ $('#analysis').innerHTML = `<div class="card err">${e.message}</div>`; }
+};
+
+function renderAnalysis(a) {
+  const rows = a.matches.map(m => `<tr>
+    <td>${pill(m.match_status)}</td><td>${m.requirement}</td>
+    <td class="mut small">${m.kind}</td><td class="mut small">${m.score}</td>
+    <td class="mut small">${(m.evidence[0]||{}).name||''}</td></tr>`).join('');
+
+  const sugg = a.plan.suggestions.map(s => `<div class="sugg" data-id="${s.id}">
+    <div class="t">${s.type} · ${s.target}</div>
+    <div class="small mut">${s.reason}</div>
+    ${s.type==='REWRITE' ? `<div class="small" style="margin:6px 0"><b>Current:</b> ${s.current}<br><b>Suggested:</b> <span class="sg">${s.suggested}</span></div>`
+      : `<div class="small" style="margin:6px 0"><b>Suggested:</b> <span class="sg">${s.suggested}</span></div>`}
+    <div class="row">
+      <button class="acc">Accept</button>
+      <button class="ghost edt">Edit</button>
+      <button class="ghost rej">Reject</button>
+      <span class="st mut small"></span>
+    </div></div>`).join('');
+
+  $('#analysis').innerHTML = `
+    <div class="card"><h2>3 · Match analysis — ${a.requirements.role||'role'}</h2>
+      <table><thead><tr><th>Status</th><th>Requirement</th><th>Kind</th><th>Score</th><th>Top evidence</th></tr></thead>
+      <tbody>${rows}</tbody></table>
+      <p class="small mut">Emphasize: ${a.plan.emphasize.slice(0,8).join(', ')}<br>
+      De-emphasize: ${a.plan.deemphasize.slice(0,8).join(', ')}</p></div>
+    <div class="card"><h2>Suggested modifications — your approval required</h2>
+      <p class="small mut">Nothing is applied until you accept it. Only confirm skills you genuinely have.</p>
+      ${sugg}</div>`;
+
+  document.querySelectorAll('.sugg').forEach(el => {
+    const id = el.dataset.id, st = el.querySelector('.st'), sg = el.querySelector('.sg');
+    const send = async (action, edited_text='') => {
+      const r = await api(`/api/suggestions/${id}/approve`, {method:'POST',
+        headers:{'content-type':'application/json'},
+        body:JSON.stringify({action, edited_text})});
+      st.innerHTML = ' → ' + pill(r.status);
+    };
+    el.querySelector('.acc').onclick = () => send('ACCEPT');
+    el.querySelector('.rej').onclick = () => send('REJECT');
+    el.querySelector('.edt').onclick = () => {
+      const v = prompt('Edit the text:', sg.textContent); if (v!=null){ sg.textContent=v; send('EDIT', v);} };
+  });
+}
+
+$('#genBtn').onclick = async () => {
+  $('#output').innerHTML = '<div class="card mut">Generating…</div>';
+  try {
+    const g = await api(`/api/jobs/${jobId}/generate`, {method:'POST'});
+    renderOutput(g);
+  } catch(e){ $('#output').innerHTML = `<div class="card err">${e.message}</div>`; }
+};
+
+function bar(label, v){ return `<div style="margin:6px 0"><div class="small">${label}
+  <span class="mut">${Math.round(v*100)}%</span></div>
+  <div class="bar"><i style="width:${Math.round(v*100)}%"></i></div></div>`; }
+
+function renderOutput(g) {
+  const v = g.validation, a = g.ats, c = g.comparison;
+  const claims = v.claims.map(cl =>
+    `<tr><td>${pill(cl.status)}</td><td class="small">${cl.text}</td></tr>`).join('');
+  $('#output').innerHTML = `
+    <div class="grid">
+      <div class="card"><h2>Tailored résumé</h2><pre>${escapeHtml(g.resume.markdown)}</pre></div>
+      <div>
+        <div class="card"><h2>JD alignment (ATS-style)</h2>
+          <div class="kpi">${Math.round(a.overall_score*100)}%</div>
+          ${bar('Required skills', a.skill_coverage)}
+          ${bar('Keywords', a.keyword_coverage)}
+          ${bar('Requirements', a.requirement_coverage)}
+          ${bar('Project relevance', a.project_relevance)}
+          ${a.missing_skills.length?`<p class="small err">Missing: ${a.missing_skills.join(', ')}</p>`:''}
+          ${a.potential_issues.map(i=>`<p class="small mut">⚠ ${i}</p>`).join('')}
+        </div>
+        <div class="card"><h2>Claim validation</h2>
+          <p class="small mut">supported ${v.supported} · needs approval ${v.needs_approval} · unsupported ${v.unsupported}</p>
+          <table>${claims}</table></div>
+      </div>
+    </div>
+    <div class="card"><h2>Original vs tailored</h2>
+      <p class="small">Skills added: <b>${c.skills_added.join(', ')||'—'}</b></p>
+      <p class="small">Skills dropped as irrelevant: <span class="mut">${c.skills_dropped.join(', ')||'—'}</span></p>
+    </div>`;
+}
+function escapeHtml(s){ return s.replace(/[&<>]/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
+</script>
+</body>
+</html>
