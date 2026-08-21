@@ -26,6 +26,7 @@ npm install
 npm run dev        # Vite dev server :5173, proxies /api -> :8000
 npm run build      # tsc typecheck + production build to dist/ (served by FastAPI)
 npm run typecheck  # tsc --noEmit
+npm test           # vitest — component render + interaction smoke tests
 ```
 The React app is presentational: all logic goes through `src/api/client.ts` and the
 `useEngine()` hook. `types.ts` is hand-kept in sync with `backend/app/models.py`.
