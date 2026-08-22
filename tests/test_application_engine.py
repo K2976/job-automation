@@ -190,5 +190,28 @@ def test_submission_uncertain_when_no_confirmation():
     assert not runner.applied(t)                     # must NOT count as applied (§31)
 
 
+def test_user_answer_to_high_impact_persists_across_redrive():
+    from app.models import AnswerSource
+    form = [{"fields": [
+        {"label": "Email", "name": "email", "type": "email", "required": True},
+        {"label": "Expected salary", "name": "salary", "type": "text", "required": True},
+    ], "control": "submit", "confirmation": "Application submitted"}]
+    t = _task(ApprovalMode.AUTONOMOUS)
+    run_it(t, FakePage(form), submit=True)
+    assert t.status == St.USER_ACTION_REQUIRED
+
+    # User supplies the salary answer on the task, then resumes.
+    sal = next(q for q in t.questions if q.name == "salary")
+    sal.answer = "As per market"
+    sal.answer_source = AnswerSource.USER_PROVIDED
+    sal.requires_review = False
+
+    page2 = FakePage(form)
+    run_it(t, page2, submit=True)
+    assert t.status == St.CONFIRMED                        # user's answer carried over
+    assert page2.values  # salary + email really filled
+    assert runner.applied(t)
+
+
 def run_it(task, page, *, submit):
     return runner.run_task(task, page, _ctx(), submit=submit)

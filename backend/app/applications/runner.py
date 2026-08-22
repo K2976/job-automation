@@ -72,11 +72,17 @@ def run_task(task: ApplicationTask, page: BrowserPage, ctx: FillContext, *,
              submit: bool = False) -> ApplicationTask:
     """Drive one application. `submit=True` permits an actual submission (autonomous mode,
     or an approved review); it still only submits when `can_submit` passes."""
-    from ..models import _now
-    # A run is a fresh attempt: a re-drive (approve→submit, or retry) re-opens and re-fills
-    # deterministically, so reset per-attempt state. Terminal tasks are never re-driven.
+    from ..models import AnswerSource, _now
+    # A run is a fresh attempt: a re-drive (approve→submit, or retry) re-opens and re-fills.
+    # Terminal tasks are never re-driven.
     if task.status in TERMINAL_STATUSES:
         return task
+    # Carry over answers that must NOT be regenerated across a re-drive: a user's answer to
+    # a high-impact/unknown question (else it's lost and re-flagged), and an LLM answer the
+    # user already reviewed (else REVIEW_BEFORE_SUBMIT would submit different text — §27, §15).
+    prior = {(q.name or q.question_text): q for q in task.questions
+             if q.answer and q.answer_source in (AnswerSource.USER_PROVIDED,
+                                                 AnswerSource.LLM_GENERATED)}
     task.status = St.READY
     task.questions = []
     task.current_page = 0
@@ -111,7 +117,11 @@ def run_task(task: ApplicationTask, page: BrowserPage, ctx: FillContext, *,
         for fd in fields:
             if fd.field_type == FieldType.button:
                 continue
-            q = classify(fd, ctx)
+            saved = prior.get(fd.name or fd.label)
+            if saved is not None:                        # reuse the reviewed/user answer
+                q = saved.model_copy(update={"field_key": fd.key})
+            else:
+                q = classify(fd, ctx)
             task.questions.append(q)
             page_questions.append(q)
             if q.answer and not q.requires_review:
