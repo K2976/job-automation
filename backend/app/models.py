@@ -374,6 +374,7 @@ class Opportunity(BaseModel):
     match_score: float = 0.0              # V1 requirement coverage
     opportunity_score: float = 0.0        # final ranking blend
     job_id: Optional[int] = None          # set only when a package is prepared
+    cover_letter: str = ""                # drafted at package prep (§27)
 
     status: OpportunityStatus = OpportunityStatus.DISCOVERED
     discovered_at: str = Field(default_factory=_now)

@@ -17,6 +17,7 @@ from ..text_utils import (
     content_tokens,
     extract_skills,
     normalize_skill,
+    prettify_skill,
     tokenize,
 )
 
@@ -53,6 +54,11 @@ class LLMProvider(ABC):
 
     def compose_summary(self, role: str, highlights: list[str]) -> str:
         s, u = prompts.summary(role, highlights)
+        return self._complete(s, u).strip()
+
+    def compose_cover_letter(self, company: str, role: str, jd_text: str,
+                             evidence: str) -> str:
+        s, u = prompts.cover_letter(company, role, jd_text, evidence)
         return self._complete(s, u).strip()
 
 
@@ -212,6 +218,27 @@ class MockLLMProvider(LLMProvider):
         lead = f"{role} with hands-on experience in {top}."
         extra = " ".join(h.rstrip(".") + "." for h in highlights[:2])
         return (lead + " " + extra).strip()
+
+    def compose_cover_letter(self, company: str, role: str, jd_text: str,
+                             evidence: str) -> str:
+        # Deterministic + grounded: only skills/evidence names actually supplied are used;
+        # nothing about the company or the candidate is invented.
+        skills = [prettify_skill(s) for s in extract_skills(evidence + " " + jd_text)[:6]]
+        focus = ", ".join(dict.fromkeys(skills)) or "software engineering"
+        ev_names = [ln.split(":", 1)[0].strip() for ln in evidence.splitlines()
+                    if ln.strip()][:3]
+        role = role or "this role"
+        company = company or "your team"
+        p1 = f"I am writing to apply for the {role} position at {company}."
+        if ev_names:
+            p2 = (f"My relevant experience spans {focus}, demonstrated through work such "
+                  f"as {', '.join(ev_names)}, which maps directly onto what this role needs.")
+        else:
+            p2 = (f"My relevant experience spans {focus}, which maps directly onto what "
+                  "this role needs.")
+        p3 = ("I would welcome the opportunity to discuss how my background fits this role. "
+              "Thank you for your consideration.")
+        return f"{p1}\n\n{p2}\n\n{p3}"
 
 
 # --------------------------------------------------------------------------- #

@@ -57,6 +57,22 @@ def rewrite(instruction: str, original: str, evidence: str) -> tuple[str, str]:
     return system, user
 
 
+def cover_letter(company: str, role: str, jd_text: str, evidence: str) -> tuple[str, str]:
+    system = (
+        "You write a concise, professional cover letter of three short paragraphs. "
+        "Use ONLY the candidate evidence provided — never invent employers, metrics, "
+        "achievements, dates or relationships, and never use placeholders like [Name]. "
+        "Plain text only."
+    )
+    user = (
+        f"COMPANY: {company}\nROLE: {role}\n\n"
+        f"RELEVANT CANDIDATE EVIDENCE (the only facts you may use):\n{evidence}\n\n"
+        f"JOB DESCRIPTION (for tone and keywords only):\n{jd_text[:1500]}\n\n"
+        "Cover letter:"
+    )
+    return system, user
+
+
 def summary(role: str, highlights: list[str]) -> tuple[str, str]:
     system = (
         "You write a 2-3 sentence professional summary for a resume targeting a role. "
