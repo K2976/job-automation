@@ -1,0 +1,24 @@
+[
+  {
+    "source_id": "backend-intern-dup",
+    "company": "Corely",
+    "title": "Backend Engineer Intern",
+    "location": "Remote",
+    "work_mode": "remote",
+    "employment_type": "internship",
+    "application_url": "https://example.com/apply/backend-intern-1",
+    "source_url": "https://mirror.example.com/corely/backend-intern",
+    "description": "Backend Engineer Intern building REST APIs with Python, FastAPI and PostgreSQL. Duplicate of the same role posted on another board."
+  },
+  {
+    "source_id": "ml-eng-intern-1",
+    "company": "Vector Works",
+    "title": "Machine Learning Engineer Intern",
+    "location": "Remote",
+    "work_mode": "remote",
+    "employment_type": "internship",
+    "application_url": "https://example.com/apply/ml-eng-intern-1",
+    "source_url": "https://mirror.example.com/vector/ml-eng-intern-1",
+    "description": "ML Engineer Intern to train and deploy machine learning models. You will work with Python, PyTorch and pandas, build feature engineering pipelines, and deploy model inference. Required: Python, machine learning, deep learning. Preferred: PyTorch, model deployment."
+  }
+]

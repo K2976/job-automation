@@ -1,0 +1,74 @@
+[
+  {
+    "source_id": "ai-eng-intern-1",
+    "company": "Nimbus AI",
+    "title": "AI Engineer Intern",
+    "location": "Remote - India",
+    "work_mode": "remote",
+    "employment_type": "internship",
+    "salary": "",
+    "application_url": "https://example.com/apply/ai-eng-intern-1",
+    "source_url": "https://boards.example.com/nimbus/ai-eng-intern-1",
+    "description": "We are looking for an AI Engineer Intern to build LLM and RAG powered features. You will work with Python, FastAPI and vector databases to ship retrieval-augmented generation pipelines. Responsibilities: design prompt engineering workflows, integrate embeddings, and deploy model inference services. Required: Python, machine learning, REST APIs. Nice to have: PostgreSQL, Docker."
+  },
+  {
+    "source_id": "data-eng-intern-1",
+    "company": "Streamline Data",
+    "title": "Data Engineer Intern",
+    "location": "Bangalore, India",
+    "work_mode": "onsite",
+    "employment_type": "internship",
+    "salary": "",
+    "application_url": "https://example.com/apply/data-eng-intern-1",
+    "source_url": "https://boards.example.com/streamline/data-eng-intern-1",
+    "description": "Join our data platform team as a Data Engineer Intern. You will build ETL data pipelines with Python and SQL, model data in PostgreSQL, and help maintain our data warehouse. Responsibilities: develop batch pipelines, optimize SQL queries, integrate REST APIs. Required: Python, SQL, data engineering. Preferred: Airflow, Spark, dbt."
+  },
+  {
+    "source_id": "backend-intern-1",
+    "company": "Corely",
+    "title": "Backend Engineer Intern",
+    "location": "Remote",
+    "work_mode": "remote",
+    "employment_type": "internship",
+    "salary": "",
+    "application_url": "https://example.com/apply/backend-intern-1",
+    "source_url": "https://boards.example.com/corely/backend-intern-1",
+    "description": "Backend Engineer Intern to develop REST APIs with Python and FastAPI backed by PostgreSQL and Supabase. You will design database schemas, build microservices, and integrate third party APIs. Required: Python, FastAPI, SQL, REST. Nice to have: Docker, Redis."
+  },
+  {
+    "source_id": "cyber-intern-1",
+    "company": "Sentinel Labs",
+    "title": "Cybersecurity Intern",
+    "location": "Hyderabad, India",
+    "work_mode": "hybrid",
+    "employment_type": "internship",
+    "salary": "",
+    "application_url": "https://example.com/apply/cyber-intern-1",
+    "source_url": "https://boards.example.com/sentinel/cyber-intern-1",
+    "description": "Cybersecurity Intern to help monitor and secure our infrastructure. You will analyze threats, work with Linux and Bash, and support incident response. Required: cybersecurity, Linux, Python scripting. Preferred: networking, cloud security on AWS."
+  },
+  {
+    "source_id": "ios-intern-1",
+    "company": "Loop Mobile",
+    "title": "iOS Developer Intern",
+    "location": "Remote - India",
+    "work_mode": "remote",
+    "employment_type": "internship",
+    "salary": "",
+    "application_url": "https://example.com/apply/ios-intern-1",
+    "source_url": "https://boards.example.com/loop/ios-intern-1",
+    "description": "iOS Developer Intern to build native apps with Swift and SwiftUI. You will implement UI, integrate REST APIs, and ship features to the App Store. Required: Swift, SwiftUI, REST. Nice to have: Git, backend integration."
+  },
+  {
+    "source_id": "senior-data-eng-1",
+    "company": "Streamline Data",
+    "title": "Senior Data Engineer",
+    "location": "Bangalore, India",
+    "work_mode": "onsite",
+    "employment_type": "full-time",
+    "salary": "",
+    "application_url": "https://example.com/apply/senior-data-eng-1",
+    "source_url": "https://boards.example.com/streamline/senior-data-eng-1",
+    "description": "Senior Data Engineer with 6+ years of experience to lead our data platform. You will architect ETL pipelines, own the data warehouse, and mentor engineers. Required: Python, SQL, Spark, Airflow, data engineering, leadership."
+  }
+]
