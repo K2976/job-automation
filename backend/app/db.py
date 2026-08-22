@@ -120,6 +120,22 @@ CREATE TABLE IF NOT EXISTS discovery_run (
     created_at TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_run_candidate ON discovery_run(candidate_id);
+
+-- V3: Application Automation ---------------------------------------------------
+-- One task per selected opportunity (unique), so a retry mutates the same row and the
+-- V2 batch maximum stays true by construction (§29).
+CREATE TABLE IF NOT EXISTS application_task (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    opportunity_id INTEGER NOT NULL REFERENCES opportunity(id),
+    batch_id INTEGER,
+    candidate_id INTEGER NOT NULL REFERENCES candidate(id),
+    status TEXT NOT NULL DEFAULT 'READY',
+    data_json TEXT NOT NULL,
+    created_at TEXT, updated_at TEXT
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_task_opp ON application_task(opportunity_id);
+CREATE INDEX IF NOT EXISTS idx_task_batch ON application_task(batch_id);
+CREATE INDEX IF NOT EXISTS idx_task_candidate ON application_task(candidate_id);
 """
 
 
@@ -541,3 +557,75 @@ def get_run(run_id: int):
     r = DiscoveryRun.model_validate_json(row["data_json"])
     r.id = row["id"]
     return r
+
+
+# ------------------------------------------------------- V3 application tasks #
+def _task_from_row(row):
+    from .models import ApplicationTask
+    t = ApplicationTask.model_validate_json(row["data_json"])
+    t.id = row["id"]
+    return t
+
+
+def upsert_task(task):
+    """Insert, or return the existing task for this opportunity (unique) so a retry mutates
+    one row instead of spawning a sibling (§29). Returns the row id."""
+    from .models import _now
+    with get_conn() as conn:
+        existing = conn.execute(
+            "SELECT id FROM application_task WHERE opportunity_id=?",
+            (task.opportunity_id,)).fetchone()
+        if existing:
+            task.id = existing["id"]
+            conn.execute(
+                "UPDATE application_task SET batch_id=?,status=?,data_json=?,updated_at=? "
+                "WHERE id=?",
+                (task.batch_id, task.status.value, task.model_dump_json(), _now(), task.id))
+            return int(task.id)
+        cur = conn.execute(
+            "INSERT INTO application_task(opportunity_id,batch_id,candidate_id,status,"
+            "data_json,created_at,updated_at) VALUES (?,?,?,?,?,?,?)",
+            (task.opportunity_id, task.batch_id, task.candidate_id, task.status.value,
+             task.model_dump_json(), task.created_at, _now()))
+        return int(cur.lastrowid)
+
+
+def save_task(task) -> None:
+    from .models import _now
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE application_task SET batch_id=?,status=?,data_json=?,updated_at=? WHERE id=?",
+            (task.batch_id, task.status.value, task.model_dump_json(), _now(), task.id))
+
+
+def get_task(task_id: int):
+    with get_conn() as conn:
+        row = conn.execute("SELECT * FROM application_task WHERE id=?", (task_id,)).fetchone()
+    return _task_from_row(row) if row else None
+
+
+def get_task_for_opportunity(opportunity_id: int):
+    with get_conn() as conn:
+        row = conn.execute("SELECT * FROM application_task WHERE opportunity_id=?",
+                           (opportunity_id,)).fetchone()
+    return _task_from_row(row) if row else None
+
+
+def list_tasks(*, candidate_id: int | None = None, batch_id: int | None = None):
+    q, params = "SELECT * FROM application_task WHERE 1=1", []
+    if candidate_id is not None:
+        q += " AND candidate_id=?"; params.append(candidate_id)
+    if batch_id is not None:
+        q += " AND batch_id=?"; params.append(batch_id)
+    q += " ORDER BY id"
+    with get_conn() as conn:
+        rows = conn.execute(q, params).fetchall()
+    return [_task_from_row(r) for r in rows]
+
+
+def count_submitted_tasks(batch_id: int) -> int:
+    """How many tasks in a batch have really been submitted — enforces the batch cap (§29)."""
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT status FROM application_task WHERE batch_id=?", (batch_id,)).fetchall()
+    return sum(1 for r in rows if r["status"] in ("SUBMITTED", "CONFIRMED"))
