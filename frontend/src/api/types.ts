@@ -106,3 +106,53 @@ export interface Explanation {
 
 export interface Health { status: string; llm_provider: string; embedding_provider: string }
 export interface RoleProfile { id: number; name: string; target_role: string; job_id: number }
+
+/* --- V2: Opportunity Intelligence --- */
+export type OpportunityStatus =
+  | 'DISCOVERED' | 'FILTERED' | 'ANALYZED' | 'SHORTLISTED' | 'TAILORING'
+  | 'READY_TO_APPLY' | 'APPLIED' | 'REJECTED' | 'SKIPPED' | 'EXPIRED' | 'BLOCKED'
+
+export interface SearchPreferences {
+  candidate_id?: number
+  target_roles: string[]; target_domains: string[]; preferred_locations: string[]
+  remote_preference: string; employment_types: string[]; experience_level: string
+  minimum_match_score: number; technology_preferences: string[]
+  excluded_roles: string[]; excluded_companies: string[]; sources: string[]
+}
+
+export interface Opportunity {
+  id: number; candidate_id: number
+  source: string; source_url: string; application_url: string; source_refs: string[]
+  company: string; title: string; location: string; work_mode: string
+  employment_type: string; salary: string; description_raw: string
+  technologies: string[]
+  cheap_score: number; match_score: number; opportunity_score: number
+  requirements: JDRequirements | null; matches: RequirementMatch[]; gaps: GapItem[]
+  job_id: number | null; cover_letter: string
+  status: OpportunityStatus; discovered_at: string; closing_date: string
+}
+
+export interface WhyApply {
+  match_score: number; opportunity_score: number
+  strong_matches: string[]; partial_matches: string[]; gaps: string[]; best_evidence: string[]
+}
+
+export interface SourceHealth {
+  name: string; configured: boolean; status: string; detail: string; discovered: number
+}
+
+export interface DiscoveryRun {
+  id: number; candidate_id: number; status: 'RUNNING' | 'COMPLETE' | 'FAILED'
+  stage: string
+  sources_checked: number; sources_successful: number; sources_skipped: number
+  discovered: number; after_filtering: number; after_dedup: number
+  deeply_analyzed: number; shortlisted: number
+  source_health: { source: string; status: string; discovered: number; detail: string }[]
+  opportunity_ids: number[]; error: string
+}
+
+export interface ApplicationBatch {
+  id: number; candidate_id: number; name: string; max_opportunities: number
+  target_roles: string[]; opportunity_ids: number[]
+  status: 'PREPARATION' | 'READY' | 'ARCHIVED'; created_at: string
+}

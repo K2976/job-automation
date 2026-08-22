@@ -1,6 +1,7 @@
 import type {
-  AnalysisResult, ApprovalAction, Candidate, Explanation, GenerationResult,
-  Health, KBEntity, ModificationSuggestion, RoleProfile,
+  AnalysisResult, ApplicationBatch, ApprovalAction, Candidate, DiscoveryRun,
+  Explanation, GenerationResult, Health, KBEntity, ModificationSuggestion,
+  Opportunity, RoleProfile, SearchPreferences, SourceHealth, WhyApply,
 } from './types'
 
 // Empty base = same origin (local dev via Vite proxy, or the FastAPI-served build).
@@ -97,4 +98,50 @@ export const api = {
 
   exportUrl: (jobId: number, fmt: 'pdf' | 'html' | 'md' | 'tex' | 'latex.pdf') =>
     url(`/api/jobs/${jobId}/export.${fmt}`),
+
+  /* --- V2: Opportunity Intelligence --- */
+  getPreferences: (cid: number) =>
+    req<SearchPreferences>(`/api/candidates/${cid}/preferences`),
+
+  savePreferences: (cid: number, prefs: SearchPreferences) =>
+    req<SearchPreferences>(`/api/candidates/${cid}/preferences`,
+      { method: 'PUT', body: JSON.stringify(prefs) }),
+
+  startDiscovery: (cid: number, prefs: SearchPreferences) =>
+    req<{ run_id: number; status: string }>(`/api/candidates/${cid}/discovery/runs`,
+      { method: 'POST', body: JSON.stringify(prefs) }),
+
+  getRun: (runId: number) => req<DiscoveryRun>(`/api/discovery/runs/${runId}`),
+
+  listOpportunities: (cid: number, status?: string) =>
+    req<{ opportunities: Opportunity[] }>(
+      `/api/candidates/${cid}/opportunities${status ? `?status=${status}` : ''}`),
+
+  getOpportunity: (oid: number) =>
+    req<{ opportunity: Opportunity; why_apply: WhyApply }>(`/api/opportunities/${oid}`),
+
+  setOpportunityStatus: (oid: number, status: string) =>
+    req<Opportunity>(`/api/opportunities/${oid}/status`,
+      { method: 'POST', body: JSON.stringify({ status }) }),
+
+  coverLetter: (oid: number) =>
+    req<{ cover_letter: string }>(`/api/opportunities/${oid}/cover-letter`),
+
+  createBatch: (cid: number, name: string, max_opportunities: number, target_roles: string[] = []) =>
+    req<ApplicationBatch>(`/api/candidates/${cid}/batches`,
+      { method: 'POST', body: JSON.stringify({ name, max_opportunities, target_roles }) }),
+
+  listBatches: (cid: number) =>
+    req<{ batches: ApplicationBatch[] }>(`/api/candidates/${cid}/batches`),
+
+  setSelection: (batchId: number, opportunity_ids: number[]) =>
+    req<ApplicationBatch>(`/api/batches/${batchId}/selection`,
+      { method: 'POST', body: JSON.stringify({ opportunity_ids }) }),
+
+  prepareBatch: (batchId: number) =>
+    req<{ batch_id: number; prepared: unknown[]; status: string }>(
+      `/api/batches/${batchId}/prepare`, { method: 'POST' }),
+
+  sources: (cid: number) =>
+    req<{ sources: SourceHealth[] }>(`/api/candidates/${cid}/sources`),
 }

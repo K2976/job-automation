@@ -27,9 +27,11 @@ test('app renders the workflow shell and start screen', () => {
   render(<App />)
   expect(screen.getByText('Adaptive Résumé Engineer')).toBeInTheDocument()
   expect(screen.getByText('Use sample candidate')).toBeInTheDocument()
-  // all four workflow steps are present
+  // all four workflow steps are present (Résumé also appears as a top-level nav tab)
   for (const step of ['Profile', 'Analysis', 'Modifications', 'Résumé'])
-    expect(screen.getByText(step)).toBeInTheDocument()
+    expect(screen.getAllByText(step).length).toBeGreaterThan(0)
+  // top-level Opportunities nav is present
+  expect(screen.getByText('Opportunities')).toBeInTheDocument()
 })
 
 test('loading a candidate populates the profile', async () => {

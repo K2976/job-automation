@@ -1,9 +1,11 @@
+import { useState } from 'react'
 import { useEngine } from './store'
 import { Alert, Loading, icons } from './ui'
 import Profile from './panels/Profile'
 import Analysis from './panels/Analysis'
 import Modifications from './panels/Modifications'
 import Resume from './panels/Resume'
+import Opportunities from './panels/Opportunities'
 
 const STEPS = [
   { label: 'Profile', title: 'Candidate profile',
@@ -16,37 +18,53 @@ const STEPS = [
     desc: 'Your role-specific résumé, validated against your real evidence.' },
 ]
 
+type View = 'resume' | 'opportunities'
+
 export function Shell({ engine }: { engine: ReturnType<typeof useEngine> }) {
   const { step, candidate, analysis } = engine
+  const [view, setView] = useState<View>('resume')
   const done = [!!candidate, !!analysis, !!engine.generation, false]
   const enabled = [true, !!candidate, !!analysis, !!analysis]
   const Panel = [Profile, Analysis, Modifications, Resume][step]
-  const wide = step === 3
+  const wide = step === 3 || view === 'opportunities'
 
   return (
     <div className="min-h-full overflow-x-hidden">
-      <TopBar engine={engine} />
-      <Stepper step={step} done={done} enabled={enabled} onGo={engine.setStep} />
+      <TopBar engine={engine} view={view} onView={setView} />
+      {view === 'resume' &&
+        <Stepper step={step} done={done} enabled={enabled} onGo={engine.setStep} />}
 
       <main className={`mx-auto w-full px-6 py-8 ${wide ? 'max-w-[1320px]' : 'max-w-[1120px]'}`}>
-        <header className="mb-7">
-          <h1 className="text-[30px] font-bold tracking-tight text-ink">{STEPS[step].title}</h1>
-          <p className="mt-1 text-[16px] text-muted">{STEPS[step].desc}</p>
-        </header>
-
-        {engine.busy && <div className="mb-5"><Loading label={engine.busy} /></div>}
-        {engine.error &&
-          <div className="mb-5">
-            <Alert title="Something went wrong">{engine.error}</Alert>
-          </div>}
-
-        <Panel engine={engine} />
+        {view === 'resume'
+          ? <>
+            <header className="mb-7">
+              <h1 className="text-[30px] font-bold tracking-tight text-ink">{STEPS[step].title}</h1>
+              <p className="mt-1 text-[16px] text-muted">{STEPS[step].desc}</p>
+            </header>
+            {engine.busy && <div className="mb-5"><Loading label={engine.busy} /></div>}
+            {engine.error &&
+              <div className="mb-5"><Alert title="Something went wrong">{engine.error}</Alert></div>}
+            <Panel engine={engine} />
+          </>
+          : <>
+            <header className="mb-7">
+              <h1 className="text-[30px] font-bold tracking-tight text-ink">Opportunities</h1>
+              <p className="mt-1 text-[16px] text-muted">
+                Discover roles that fit your profile, see why each is a match, and prepare
+                tailored application packages — nothing is submitted.
+              </p>
+            </header>
+            <Opportunities candidateId={engine.candidate?.id ?? null} />
+          </>}
       </main>
     </div>
   )
 }
 
-function TopBar({ engine }: { engine: ReturnType<typeof useEngine> }) {
+function TopBar({ engine, view, onView }:
+  { engine: ReturnType<typeof useEngine>; view: View; onView: (v: View) => void }) {
+  const nav: { id: View; label: string }[] = [
+    { id: 'resume', label: 'Résumé' }, { id: 'opportunities', label: 'Opportunities' }]
   return (
     <header className="border-b border-line bg-surface">
       <div className="mx-auto flex h-14 max-w-[1320px] items-center gap-3 px-6">
@@ -58,6 +76,16 @@ function TopBar({ engine }: { engine: ReturnType<typeof useEngine> }) {
             Adaptive Résumé Engineer
           </span>
         </div>
+        <nav className="ml-6 flex items-center gap-1">
+          {nav.map(n => (
+            <button key={n.id} onClick={() => onView(n.id)}
+              aria-current={view === n.id ? 'page' : undefined}
+              className={`rounded-md px-3 py-1.5 text-[14px] font-medium transition-colors
+                ${view === n.id ? 'bg-raised text-ink' : 'text-muted hover:text-ink'}`}>
+              {n.label}
+            </button>
+          ))}
+        </nav>
         <div className="ml-auto flex items-center gap-4 text-[13px] text-muted">
           {engine.candidate &&
             <span className="hidden sm:inline">{engine.candidate.name}</span>}

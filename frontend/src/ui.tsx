@@ -31,6 +31,14 @@ const LABEL: Record<string, string> = {
   MISSING: 'Gap', USER_CONFIRMATION_REQUIRED: 'Confirm?',
   SUPPORTED_BY_ORIGINAL: 'Supported', SUPPORTED_BY_USER_CONFIRMATION: 'Confirmed',
   AI_SUGGESTED_NOT_APPROVED: 'Unapproved', UNSUPPORTED: 'Unsupported',
+  // V2 opportunity lifecycle
+  DISCOVERED: 'Discovered', FILTERED: 'Filtered', ANALYZED: 'Analyzed',
+  SHORTLISTED: 'Shortlisted', TAILORING: 'Preparing', READY_TO_APPLY: 'Ready',
+  APPLIED: 'Applied', SKIPPED: 'Skipped', EXPIRED: 'Expired', BLOCKED: 'Blocked',
+  // V2 source health
+  AVAILABLE: 'Healthy', CAPTCHA: 'CAPTCHA', UNREACHABLE: 'Unreachable',
+  RATE_LIMITED: 'Rate limited', UNSUPPORTED_SOURCE: 'Unsupported', ERROR: 'Error',
+  UNKNOWN: 'Not run yet',
 }
 const TONE: Record<string, Tone> = {
   ORIGINAL: 'accent', USER_CONFIRMED: 'pos', USER_EDITED: 'pos', GENERATED: 'neutral',
@@ -39,6 +47,11 @@ const TONE: Record<string, Tone> = {
   MISSING: 'neg', USER_CONFIRMATION_REQUIRED: 'warn',
   SUPPORTED_BY_ORIGINAL: 'pos', SUPPORTED_BY_USER_CONFIRMATION: 'pos',
   AI_SUGGESTED_NOT_APPROVED: 'warn', UNSUPPORTED: 'neg',
+  DISCOVERED: 'neutral', FILTERED: 'neutral', ANALYZED: 'accent',
+  SHORTLISTED: 'warn', TAILORING: 'warn', READY_TO_APPLY: 'pos',
+  APPLIED: 'pos', SKIPPED: 'neutral', EXPIRED: 'neutral', BLOCKED: 'neg',
+  AVAILABLE: 'pos', CAPTCHA: 'warn', UNREACHABLE: 'warn',
+  RATE_LIMITED: 'warn', ERROR: 'neg', UNKNOWN: 'neutral',
 }
 const TONE_CLASS: Record<Tone, string> = {
   pos: 'bg-success-soft text-success', warn: 'bg-warn-soft text-warn',
