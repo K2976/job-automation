@@ -30,3 +30,11 @@ services:
       # Set to your Vercel URL after the frontend is deployed, then redeploy.
       - key: CORS_ORIGINS
         sync: false
+      # V2 opportunity discovery. Default to the offline fixture source; add
+      # "greenhouse,lever" here and set the board lists in the dashboard to go live.
+      - key: OPPORTUNITY_SOURCES
+        value: fixtures
+      - key: GREENHOUSE_BOARDS
+        sync: false
+      - key: LEVER_BOARDS
+        sync: false

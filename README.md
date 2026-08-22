@@ -153,9 +153,21 @@ and Groq (`gpt-oss-120b`) is ~7× faster than Gemini (`gemini-3.6-flash`).
 
 ## Status
 
-V1 is complete: full React frontend, live Gemini/Groq providers (hardened with retry/
+**V1** is complete: full React frontend, live Gemini/Groq providers (hardened with retry/
 timeout/auth handling), résumé PDF/HTML/Markdown export, profile editing, role-view
-snapshots, and the full analyze → approve → generate → validate loop. 35 backend tests +
-a typechecked frontend build, all offline on the mock provider. Job discovery (V2) and
-application automation (V3) are intentionally **not** built — see the
-[roadmap](docs/roadmap.md).
+snapshots, and the full analyze → approve → generate → validate loop.
+
+**V2 — Opportunity Intelligence** is complete: modular source adapters (offline fixtures +
+Greenhouse/Lever public APIs, with CAPTCHA/blocked sources skipped and reported — never
+bypassed), a cheap-first discovery pipeline that reuses the V1 RAG engine for analysis and
+matching, deterministic ranking with why-apply explanations, application batches with a
+hard max-selection invariant, package preparation (tailored résumé + grounded cover letter)
+reusing the V1 résumé pipeline, and an opportunity tracker — surfaced through an
+Opportunities section in the same UI. Discovery runs in the background with polled,
+real-count progress. See [opportunity-intelligence.md](docs/opportunity-intelligence.md),
+[opportunity-sources.md](docs/opportunity-sources.md), and
+[application-batches.md](docs/application-batches.md).
+
+All offline on the mock provider: 40+ backend test cases and a typechecked frontend build.
+Application automation (**V3**) — browser control, form filling, submission — is
+intentionally **not** built. See the [roadmap](docs/roadmap.md).

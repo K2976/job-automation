@@ -64,6 +64,19 @@ def test_rediscovery_reuses_cache_without_duplicating(candidate_id):
     assert len(first) == len(second)  # upsert by (candidate, source, source_id), no dupes
 
 
+def test_shortlist_narrows_below_analyzed(candidate_id):
+    from app.config import settings
+    old = settings.discovery_shortlist_n
+    settings.discovery_shortlist_n = 3
+    try:
+        run = _run(candidate_id)
+        assert run.deeply_analyzed == 6            # all survivors analysed
+        assert run.shortlisted == 3                # but only the top 3 surfaced
+        assert len(run.opportunity_ids) == 3       # count matches the ids exactly
+    finally:
+        settings.discovery_shortlist_n = old
+
+
 def test_rejected_opportunity_not_resurfaced(candidate_id):
     _run(candidate_id)
     opp = db.list_opportunities(candidate_id)[0]

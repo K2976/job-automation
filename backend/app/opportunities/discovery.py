@@ -144,9 +144,12 @@ def _execute(run: DiscoveryRun, llm: LLMProvider) -> None:
 
     analyzed = [o for o in deduped if o.status == OpportunityStatus.ANALYZED]
     analyzed.sort(key=lambda o: o.opportunity_score, reverse=True)
+    # The shortlist is the top-ranked slice surfaced as this run's results. Opportunities
+    # analysed beyond it stay ANALYZED and remain in the full list, but the run points only
+    # at the shortlist — so `shortlisted` always equals len(opportunity_ids) (honest count).
     shortlist = analyzed[: settings.discovery_shortlist_n]
     run.shortlisted = len(shortlist)
-    run.opportunity_ids = [o.id for o in analyzed]  # results, best-first
+    run.opportunity_ids = [o.id for o in shortlist]  # results, best-first
 
 
 def _coverage(matches) -> float:

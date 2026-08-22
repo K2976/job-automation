@@ -61,3 +61,27 @@ Only `ORIGINAL/USER_CONFIRMED/USER_EDITED` count as usable evidence
 Ingestion validates type/size (`ingestion.IngestionError` → HTTP 400). Provider failures
 raise `LLMError` → HTTP 502. Malformed structured LLM output is caught and validated
 against Pydantic before use (`providers/llm._parse_json`).
+
+## V2 — Opportunity Intelligence
+A second flow attaches to V1 without altering it:
+
+```
+FastAPI  (opportunities_api.py — thin router mounted alongside api.py)
+      │
+Discovery orchestrator  (opportunities/discovery.py — background task, polled DiscoveryRun)
+      │
+Sources  (opportunities/sources/ — FixtureSource + Greenhouse/Lever; error-isolated run())
+      │
+Processing  (opportunities/processing.py — normalize · dedup · filter · cheap match · rank; no LLM)
+      │
+V1 reuse  ── pipeline.match_jd (deep analysis: 1 analyze_jd/opp) ·
+             pipeline.analyze_job + generate_for_job (package prep) · RetrievalIndex · matching
+      │
+Batches/packages  (opportunities/batches.py, packages.py)   SQLite (opportunity/batch/run/prefs)
+```
+
+The seam is deliberate: discovery deep-analysis calls `pipeline.match_jd` (analyze_jd +
+deterministic matching/gaps — **no** `build_plan`/`rewrite`), so LLM cost is one call per
+analysed opportunity; the full `analyze_job` + generation runs only at package preparation,
+for *selected* opportunities. The Opportunity's `job_id` links back to a V1 `Job`. See
+[opportunity-intelligence.md](opportunity-intelligence.md).
