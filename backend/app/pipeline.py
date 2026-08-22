@@ -33,16 +33,27 @@ def _supported_entities(candidate_id: int):
 
 
 # --------------------------------------------------------------------------- #
-def analyze_job(candidate_id: int, jd_text: str, llm: LLMProvider | None = None) -> dict:
+def match_jd(candidate_id: int, jd_text: str, llm: LLMProvider | None = None) -> dict:
+    """JD → requirements + matches + gaps (CLAUDE.md §16 stops here). Exactly one LLM
+    call (analyze_jd); everything else is deterministic. This is the discovery deep-analysis
+    stage: it must NOT trigger the per-project `llm.rewrite` calls that build_plan makes,
+    or analysing N opportunities costs N×(1+rewrites) LLM calls (§3/§34)."""
     llm = llm or get_llm_provider()
     requirements = llm.analyze_jd(jd_text)
-
     entities = _supported_entities(candidate_id)
     index = RetrievalIndex(entities)
-    skill_set = matching.candidate_skill_set(entities)
-
-    matches = matching.match_requirements(index, requirements, skill_set)
+    matches = matching.match_requirements(
+        index, requirements, matching.candidate_skill_set(entities))
     gaps = matching.analyze_gaps(matches)
+    return {"requirements": requirements, "matches": matches, "gaps": gaps,
+            "entities": entities, "index": index}
+
+
+def analyze_job(candidate_id: int, jd_text: str, llm: LLMProvider | None = None) -> dict:
+    llm = llm or get_llm_provider()
+    m = match_jd(candidate_id, jd_text, llm)
+    requirements, matches, gaps = m["requirements"], m["matches"], m["gaps"]
+    entities, index = m["entities"], m["index"]
     plan = planning.build_plan(requirements.role, requirements, matches, index,
                                entities, llm)
 
