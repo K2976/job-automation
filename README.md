@@ -136,7 +136,19 @@ See [`docs/development.md`](docs/development.md) and [`docs/architecture.md`](do
 [knowledge base](docs/candidate-knowledge-base.md) · [RAG pipeline](docs/rag-pipeline.md) ·
 [LLM strategy](docs/llm-strategy.md) · [resume generation](docs/resume-generation.md) ·
 [gap analysis](docs/gap-analysis.md) · [validation](docs/validation.md) ·
-[API](docs/api.md) · [setup](docs/setup.md) · [roadmap](docs/roadmap.md)
+[API](docs/api.md) · [setup](docs/setup.md) · [deployment](docs/deployment.md) ·
+[roadmap](docs/roadmap.md) · **[AI validation report](docs/ai-validation-report.md)** ·
+[RAG evaluation](docs/rag-evaluation.md)
+
+### AI / RAG evaluation
+```bash
+pytest tests/evaluation -q                          # offline evaluation asserts (mock)
+python tests/evaluation/run_eval.py --provider groq   # live eval, writes docs/eval-runs/groq.json
+```
+Findings, Gemini-vs-Groq, and limitations are in the
+[AI validation report](docs/ai-validation-report.md). Headline: the deterministic core is
+robust to live input, project reframing works, the validator catches live hallucination,
+and Groq (`gpt-oss-120b`) is ~7× faster than Gemini (`gemini-3.6-flash`).
 
 ## Status
 
