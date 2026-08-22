@@ -428,3 +428,131 @@ class DiscoveryRun(BaseModel):
     error: str = ""
     created_at: str = Field(default_factory=_now)
     finished_at: str = ""
+
+
+# =========================================================================== #
+# V3 — Application Automation                                                  #
+# =========================================================================== #
+class ApprovalMode(str, Enum):
+    """How much human involvement an application requires (§9)."""
+    MANUAL = "MANUAL"                        # fill only; user submits
+    REVIEW_BEFORE_SUBMIT = "REVIEW_BEFORE_SUBMIT"  # fill, then user approves before submit
+    AUTONOMOUS = "AUTONOMOUS"                # submit automatically when safe
+
+
+class ApplicationStatus(str, Enum):
+    """Application task lifecycle (§8). Transitions are constrained in state_machine.py."""
+    READY = "READY"
+    QUEUED = "QUEUED"
+    PAUSED = "PAUSED"
+    OPENING = "OPENING"
+    INSPECTING = "INSPECTING"
+    FILLING = "FILLING"
+    REVIEW_REQUIRED = "REVIEW_REQUIRED"      # filled, awaiting human approve (manual/review)
+    USER_ACTION_REQUIRED = "USER_ACTION_REQUIRED"  # unknown/high-impact question needs user
+    LOGIN_REQUIRED = "LOGIN_REQUIRED"        # site needs authentication (§25)
+    BLOCKED = "BLOCKED"                       # CAPTCHA / anti-bot — never bypassed (§22)
+    FAILED = "FAILED"
+    SUBMITTED = "SUBMITTED"
+    CONFIRMED = "CONFIRMED"
+    SUBMISSION_UNCERTAIN = "SUBMISSION_UNCERTAIN"  # submitted but no confirmation (§31)
+    CANCELLED = "CANCELLED"
+
+
+# Statuses that mean "an application really went through" — the ONLY ones that set
+# Opportunity.status = APPLIED (§30). SUBMISSION_UNCERTAIN deliberately excluded.
+APPLIED_STATUSES = {ApplicationStatus.SUBMITTED, ApplicationStatus.CONFIRMED}
+# Terminal statuses — the runner does no further work from here.
+TERMINAL_STATUSES = {
+    ApplicationStatus.CONFIRMED, ApplicationStatus.SUBMITTED,
+    ApplicationStatus.SUBMISSION_UNCERTAIN, ApplicationStatus.FAILED,
+    ApplicationStatus.CANCELLED,
+}
+
+
+class AnswerSource(str, Enum):
+    CANDIDATE_PROFILE = "CANDIDATE_PROFILE"
+    APPLICATION_PACKAGE = "APPLICATION_PACKAGE"   # tailored résumé / cover letter
+    DETERMINISTIC_RULE = "DETERMINISTIC_RULE"
+    LLM_GENERATED = "LLM_GENERATED"
+    USER_PROVIDED = "USER_PROVIDED"
+    UNRESOLVED = "UNRESOLVED"                       # no safe answer yet
+
+
+class FieldType(str, Enum):
+    text = "text"
+    email = "email"
+    tel = "tel"
+    url = "url"
+    number = "number"
+    date = "date"
+    textarea = "textarea"
+    select = "select"
+    radio = "radio"
+    checkbox = "checkbox"
+    file = "file"
+    button = "button"
+    unknown = "unknown"
+
+
+class ApplicationQuestion(BaseModel):
+    """A structured representation of one application form field/question (§12)."""
+    field_key: str = ""                      # opaque driver handle (never a CSS selector)
+    question_text: str = ""
+    name: str = ""                           # html name/id, for logging
+    field_type: FieldType = FieldType.text
+    required: bool = False
+    options: list[str] = Field(default_factory=list)
+    answer: str = ""
+    answer_source: AnswerSource = AnswerSource.UNRESOLVED
+    confidence: float = 0.0
+    requires_review: bool = False
+    reason: str = ""
+
+
+class ApplicationAnswer(BaseModel):
+    """Structured LLM output for a semantic question (§17). Validated before use."""
+    answer: str = ""
+    source_evidence: list[str] = Field(default_factory=list)
+    confidence: float = 0.0
+    requires_review: bool = False
+
+
+class TaskEvent(BaseModel):
+    """One structured browser-task log line (§33). Field NAMES only — never values,
+    passwords, cookies or tokens."""
+    at: str = Field(default_factory=_now)
+    event: str
+    detail: str = ""
+
+
+class ApplicationTask(BaseModel):
+    """A single application attempt for one opportunity (§7). One task per selected
+    opportunity; a retry mutates this task, never creates a sibling — that keeps the V2
+    batch maximum true by construction (§29)."""
+    id: Optional[int] = None
+    opportunity_id: int
+    batch_id: Optional[int] = None
+    candidate_id: int
+    application_url: str = ""
+    status: ApplicationStatus = ApplicationStatus.READY
+    approval_mode: ApprovalMode = ApprovalMode.REVIEW_BEFORE_SUBMIT
+
+    resume_artifact: str = ""                # resolved file/endpoint for the tailored résumé
+    cover_letter: str = ""
+    current_page: int = 0
+    questions: list[ApplicationQuestion] = Field(default_factory=list)
+    logs: list[TaskEvent] = Field(default_factory=list)
+
+    error_code: str = ""
+    error_message: str = ""
+    confirmation_reference: str = ""
+    retry_count: int = 0
+
+    created_at: str = Field(default_factory=_now)
+    started_at: str = ""
+    finished_at: str = ""
+    submitted_at: str = ""
+
+    def log(self, event: str, detail: str = "") -> None:
+        self.logs.append(TaskEvent(event=event, detail=detail))
