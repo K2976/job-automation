@@ -43,10 +43,62 @@ def _daterange(start: str | None, end: str | None) -> str:
 
 
 def _entry(heading: str, subheading: str, date: str, bullet_texts: list[str],
-           evidence_id: int | None) -> ResumeEntry:
-    bullets = [ResumeBullet(text=t, status=Status.GENERATED, evidence_entity_id=evidence_id)
+           evidence_id: int | None, status: Status = Status.GENERATED) -> ResumeEntry:
+    bullets = [ResumeBullet(text=t, status=status, evidence_entity_id=evidence_id)
                for t in bullet_texts if t and t.strip()]
     return ResumeEntry(heading=heading, subheading=subheading, date=date, bullets=bullets)
+
+
+def original_resume(candidate: Candidate, entities: list[KBEntity]) -> TailoredResume:
+    """The untailored master profile as a TailoredResume — no JD, no filtering — so the
+    original can be exported through the same template as tailored views (§32). Content is
+    ORIGINAL evidence verbatim; nothing is reframed or dropped."""
+    by_type: dict[EntityType, list[KBEntity]] = {}
+    for e in entities:
+        by_type.setdefault(e.entity_type, []).append(e)
+
+    proj = ResumeSection(title="Projects")
+    for e in by_type.get(EntityType.project, []):
+        d = e.data
+        pts = (d.get("responsibilities") or ([d.get("summary")] if d.get("summary") else []))
+        proj.entries.append(_entry(e.name, "", "", pts[:4], e.id, Status.ORIGINAL))
+        proj.bullets.append(ResumeBullet(text=f"{e.name}: {d.get('summary') or e.content}",
+                                         status=Status.ORIGINAL, evidence_entity_id=e.id))
+
+    exp = ResumeSection(title="Experience")
+    for e in by_type.get(EntityType.experience, []):
+        d = e.data
+        pts = d.get("highlights") or ([d["description"]] if d.get("description") else [])
+        exp.entries.append(_entry(d.get("company") or e.name, d.get("title", ""),
+                                  _daterange(d.get("start"), d.get("end")), pts[:4], e.id,
+                                  Status.ORIGINAL))
+        exp.bullets.append(ResumeBullet(text=e.content, status=Status.ORIGINAL,
+                                        evidence_entity_id=e.id))
+
+    edu = ResumeSection(title="Education")
+    for e in by_type.get(EntityType.education, []):
+        d = e.data
+        sub = ", ".join(x for x in (d.get("degree"), d.get("field")) if x)
+        edu.entries.append(_entry(d.get("institution") or e.name, sub,
+                                  _daterange(d.get("start"), d.get("end")), [], e.id,
+                                  Status.ORIGINAL))
+        edu.bullets.append(ResumeBullet(text=e.content, status=Status.ORIGINAL,
+                                        evidence_entity_id=e.id))
+
+    flat = []
+    for title, etype in (("Achievements", EntityType.achievement),
+                         ("Certifications", EntityType.certification)):
+        sec = ResumeSection(title=title, bullets=[
+            ResumeBullet(text=e.content, status=Status.ORIGINAL, evidence_entity_id=e.id)
+            for e in by_type.get(etype, [])])
+        flat.append(sec)
+
+    skills = [prettify_skill(e.name) for e in by_type.get(EntityType.skill, [])]
+    sections = [s for s in (proj, exp, edu, *flat) if s.entries or s.bullets]
+    resume = TailoredResume(candidate=candidate, target_role=candidate.headline,
+                            summary=candidate.headline, skills=skills, sections=sections)
+    resume.markdown = render_markdown(resume)
+    return resume
 
 
 def generate_resume(

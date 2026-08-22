@@ -119,6 +119,8 @@ def resume_to_context(resume: TailoredResume) -> dict:
 
 def render_latex(resume: TailoredResume, template: str = DEFAULT_TEMPLATE) -> str:
     """Structured résumé -> .tex source. Deterministic; no compiler required."""
+    # ponytail: template.schema.json declares max_pages:2 but nothing enforces it — real
+    # profiles fit. Add bullet-trimming/density control here if résumés start overflowing.
     tdir = TEMPLATES_DIR / template
     if not (tdir / "template.tex.j2").exists():
         raise TemplateNotFoundError(f"Unknown résumé template {template!r}")

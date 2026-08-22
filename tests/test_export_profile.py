@@ -51,6 +51,25 @@ def test_latex_export_endpoints(candidate_id):
         assert pdf.content[:5] == b"%PDF-"
 
 
+def test_original_master_export_endpoints(candidate_id):
+    client = TestClient(app)
+    tex = client.get(f"/api/candidates/{candidate_id}/export.original.tex")
+    assert tex.status_code == 200 and "\\documentclass{resume}" in tex.text
+    pdf = client.get(f"/api/candidates/{candidate_id}/export.original.pdf")
+    assert pdf.status_code in (200, 503)
+
+
+def test_latex_pdf_friendly_503_when_no_engine(candidate_id, monkeypatch):
+    """The only path Render's engine-less build takes: no raw log, a friendly 503 (§35)."""
+    from app import latex
+    _, job_id = _generate(candidate_id)
+    monkeypatch.setattr(latex, "_engine", lambda: None)
+    r = TestClient(app).get(f"/api/jobs/{job_id}/export.latex.pdf")
+    assert r.status_code == 503
+    assert "standard" in r.json()["detail"].lower()
+    assert "\\" not in r.json()["detail"]        # no LaTeX/compiler log leaks to the user
+
+
 def test_profile_editing(candidate_id):
     client = TestClient(app)
     # edit candidate header

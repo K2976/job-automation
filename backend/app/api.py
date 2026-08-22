@@ -12,7 +12,7 @@ from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, Res
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import analysis, db, export, ingestion, kb, latex, pipeline
+from . import analysis, db, export, generation, ingestion, kb, latex, pipeline
 from .config import REPO_ROOT, settings
 from .models import (
     ApprovalAction,
@@ -266,6 +266,49 @@ def export_pdf(job_id: int) -> Response:
                     headers={"Content-Disposition": f'attachment; filename="{fname}"'})
 
 
+def _original_resume(candidate_id: int) -> TailoredResume:
+    """The untailored master profile as a renderable résumé (§32) — original stays a
+    separate structured state from any tailored view."""
+    candidate = db.get_candidate(candidate_id)
+    if candidate is None:
+        raise HTTPException(404, "candidate not found")
+    entities = db.get_entities(candidate_id, statuses={Status.ORIGINAL})
+    return generation.original_resume(candidate, entities)
+
+
+def _pdf_response(pdf: bytes, name: str, role: str) -> Response:
+    fname = f"{name or 'resume'}_{role or 'resume'}.pdf"
+    return Response(pdf, media_type="application/pdf",
+                    headers={"Content-Disposition": f'attachment; filename="{fname}"'})
+
+
+def _latex_pdf(resume: TailoredResume) -> bytes:
+    """Compile the LaTeX PDF, translating engine failures into friendly 503s (§35)."""
+    try:
+        return latex.compile_pdf(latex.render_latex(resume))
+    except latex.LatexUnavailableError:
+        raise HTTPException(503, "The professional PDF renderer isn't available in this "
+                            "environment. Use Download PDF (standard) or Download .tex.")
+    except latex.LatexCompileError as e:
+        import logging
+        logging.getLogger("uvicorn.error").error("LaTeX compile failed: %s", e.log[-2000:])
+        raise HTTPException(503, "We couldn't compile the professional PDF from this "
+                            "résumé. The content generated fine — try Download PDF (standard).")
+
+
+@app.get("/api/candidates/{candidate_id}/export.original.tex", response_class=PlainTextResponse)
+def export_original_tex(candidate_id: int) -> Response:
+    resume = _original_resume(candidate_id)
+    return PlainTextResponse(latex.render_latex(resume), headers={
+        "Content-Disposition": f'attachment; filename="{resume.candidate.name}_master.tex"'})
+
+
+@app.get("/api/candidates/{candidate_id}/export.original.pdf")
+def export_original_pdf(candidate_id: int) -> Response:
+    resume = _original_resume(candidate_id)
+    return _pdf_response(_latex_pdf(resume), resume.candidate.name, "master")
+
+
 @app.get("/api/jobs/{job_id}/export.tex", response_class=PlainTextResponse)
 def export_tex(job_id: int) -> Response:
     """LaTeX source rendered from the approved structured résumé. Always available —
@@ -284,19 +327,7 @@ def export_latex_pdf(job_id: int) -> Response:
     is installed (or compilation fails) we return 503 with a friendly message rather than
     a raw compiler log (§35). The reportlab /export.pdf path stays as a reliable fallback."""
     resume = _resume_for_export(job_id)
-    try:
-        pdf = latex.compile_pdf(latex.render_latex(resume))
-    except latex.LatexUnavailableError:
-        raise HTTPException(503, "The professional PDF renderer isn't available in this "
-                            "environment. Use Download PDF (standard) or Download .tex.")
-    except latex.LatexCompileError as e:
-        import logging
-        logging.getLogger("uvicorn.error").error("LaTeX compile failed: %s", e.log[-2000:])
-        raise HTTPException(503, "We couldn't compile the professional PDF from this "
-                            "résumé. The content generated fine — try Download PDF (standard).")
-    fname = f"{resume.candidate.name or 'resume'}_{resume.target_role or 'tailored'}.pdf"
-    return Response(pdf, media_type="application/pdf",
-                    headers={"Content-Disposition": f'attachment; filename="{fname}"'})
+    return _pdf_response(_latex_pdf(resume), resume.candidate.name, resume.target_role)
 
 
 @app.get("/api/jobs/{job_id}/export.html", response_class=HTMLResponse)

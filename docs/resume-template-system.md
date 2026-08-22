@@ -37,7 +37,10 @@ professional layout a flat bullet can't express.
 | `subheading`        | `{\em …}` italic line             | job title / degree, field |
 | `bullets[]`         | `\\ - …` lines                    | approved rewrite / original responsibilities / highlights |
 
-`generation.generate_resume` builds `entries` from the *same supported evidence* it
+`generation.original_resume` renders the **untailored master profile** through the same
+template (all projects/skills kept, no JD filtering) so the original stays a separate
+exportable state from any tailored view (§32). Tailored views come from
+`generation.generate_resume`, which builds `entries` from the *same supported evidence* it
 already uses (`_supported_entities` + approved rewrites), and still fills the legacy
 `section.bullets` unchanged — so the reportlab PDF, HTML, Markdown, and web preview keep
 working with zero edits. Only the LaTeX renderer reads `entries`.
@@ -74,6 +77,7 @@ do not substitute a different résumé class.
 | `GET /api/jobs/{id}/export.tex`       | LaTeX source     | always |
 | `GET /api/jobs/{id}/export.pdf`       | reportlab PDF    | always (reliable fallback) |
 | `GET /api/jobs/{id}/export.{html,md}` | HTML / Markdown  | always |
+| `GET /api/candidates/{id}/export.original.{tex,pdf}` | untailored master profile | `.tex` always; `.pdf` needs an engine |
 
 The UI offers **Professional PDF** and **PDF (standard)** side by side plus a `.tex`
 link. Per §21 we never silently swap in a different design — if compilation is

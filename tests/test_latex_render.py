@@ -119,6 +119,29 @@ def test_compile_generated_resume(candidate_id):
     assert pdf[:5] == b"%PDF-"
 
 
+def test_original_master_profile_renders(candidate_id):
+    """§38/§42: the untailored master profile must render through the template too."""
+    from app import db, generation
+    from app.models import Status
+    candidate = db.get_candidate(candidate_id)
+    entities = db.get_entities(candidate_id, statuses={Status.ORIGINAL})
+    resume = generation.original_resume(candidate, entities)
+    tex = latex.render_latex(resume)
+    assert candidate.name in tex and r"\documentclass{resume}" in tex
+    # original keeps ALL projects (no JD filtering), unlike a tailored view
+    assert "PortfolioKit" in tex and "Parkezy" in tex and "Setu AI" in tex
+
+
+@pytest.mark.skipif(not HAS_ENGINE, reason="no LaTeX engine installed")
+def test_original_master_profile_compiles(candidate_id):
+    from app import db, generation
+    from app.models import Status
+    resume = generation.original_resume(
+        db.get_candidate(candidate_id),
+        db.get_entities(candidate_id, statuses={Status.ORIGINAL}))
+    assert latex.compile_pdf(latex.render_latex(resume))[:5] == b"%PDF-"
+
+
 def test_compile_raises_when_no_engine(monkeypatch):
     monkeypatch.setattr(latex, "_engine", lambda: None)
     with pytest.raises(latex.LatexUnavailableError):
