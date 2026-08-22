@@ -1,0 +1,26 @@
+AI/ML Engineer
+
+We are looking for an AI/ML Engineer to design, train and ship machine learning features,
+including deep learning models and LLM-powered applications, from prototype to production.
+
+Responsibilities:
+- Design, train and evaluate machine learning and deep learning models
+- Build data-processing pipelines for feature engineering
+- Deploy models to production, including edge and real-time environments
+- Develop LLM / RAG features and integrate them via APIs
+- Collaborate with product teams to ship AI features
+
+Required skills:
+- Strong Python
+- Machine learning and deep learning (CNN and related architectures)
+- Feature engineering and data processing
+- Model deployment and evaluation
+- Integrating models via REST APIs
+
+Nice to have:
+- Experience with edge AI and on-device inference
+- LLMs, RAG and embeddings
+- PyTorch or TensorFlow
+- Vector databases
+
+2+ years of experience preferred.

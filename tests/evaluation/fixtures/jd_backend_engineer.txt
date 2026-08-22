@@ -1,0 +1,26 @@
+Backend Engineer
+
+We are hiring a Backend Engineer to design and build the APIs and services behind our
+product. You will own backend systems end to end, from data model to deployed service.
+
+Responsibilities:
+- Design and build REST APIs and backend services
+- Model and query data in PostgreSQL
+- Implement authentication and authorization
+- Containerize and deploy services with Docker
+- Maintain reliability, logging and monitoring of backend systems
+
+Required skills:
+- Strong Python
+- Building REST APIs (FastAPI or similar frameworks)
+- PostgreSQL and relational databases
+- Designing backend systems and services
+- Authentication and secure API design
+
+Nice to have:
+- Docker and container orchestration
+- Microservices architecture
+- CI/CD pipelines
+- Cloud deployment (AWS/GCP)
+
+2+ years of experience preferred.

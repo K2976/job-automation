@@ -1,0 +1,26 @@
+Cybersecurity Engineer
+
+We are hiring a Cybersecurity Engineer to assess, harden and defend our applications and
+infrastructure. You will find vulnerabilities before attackers do and help teams fix them.
+
+Responsibilities:
+- Perform web application security testing and vulnerability assessments
+- Conduct penetration testing across web, network and cloud
+- Analyze traffic and findings with tools such as Burp Suite
+- Review network and Linux system configurations for weaknesses
+- Produce security analysis reports and remediation guidance
+
+Required skills:
+- Web application security and the OWASP Top 10
+- Vulnerability assessment and penetration testing
+- Networking fundamentals and Linux
+- Hands-on with Burp Suite and similar security tooling
+- Security analysis and clear reporting
+
+Nice to have:
+- Scripting for security automation (Python)
+- Cloud security (AWS/GCP)
+- SIEM and threat detection
+- Relevant certifications (OSCP, CEH)
+
+3+ years of experience preferred.

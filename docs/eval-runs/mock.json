@@ -1,0 +1,620 @@
+{
+  "provider": "mock",
+  "model": "mock",
+  "generated_at": "2026-08-22T10:28:58",
+  "config": {
+    "embeddings": "local",
+    "retrieval_top_k": 8
+  },
+  "results": [
+    {
+      "key": "data_engineer",
+      "provider": "mock",
+      "model": "-",
+      "role_extracted": "Data Engineer",
+      "role_ok": true,
+      "jd_extraction": {
+        "recall": 1.0,
+        "matched": [
+          "etl",
+          "postgresql",
+          "python",
+          "rest",
+          "sql"
+        ],
+        "missed": []
+      },
+      "false_positives": [],
+      "matching": {
+        "strong_ok": true,
+        "strong": {
+          "sql": "STRONG_MATCH",
+          "python": "STRONG_MATCH",
+          "rest": "STRONG_MATCH",
+          "postgresql": "STRONG_MATCH"
+        },
+        "missing_ok": true,
+        "missing": {
+          "dbt": "MISSING",
+          "etl": "MISSING",
+          "spark": "MISSING",
+          "airflow": "MISSING"
+        }
+      },
+      "retrieval": {
+        "postgresql": {
+          "hit@3": true,
+          "hit@5": true,
+          "modes": {
+            "semantic": [
+              "PostgreSQL",
+              "iOS Developer at Freelance",
+              "Parkezy",
+              "Swift",
+              "SwiftUI"
+            ],
+            "keyword": [
+              "PostgreSQL",
+              "iOS Developer at Freelance",
+              "Parkezy",
+              "Swift",
+              "SwiftUI"
+            ],
+            "hybrid": [
+              "PostgreSQL",
+              "iOS Developer at Freelance",
+              "Parkezy",
+              "Swift",
+              "SwiftUI"
+            ]
+          }
+        },
+        "rest": {
+          "hit@3": true,
+          "hit@5": true,
+          "modes": {
+            "semantic": [
+              "REST",
+              "Parkezy",
+              "Swift",
+              "SwiftUI",
+              "Python"
+            ],
+            "keyword": [
+              "REST",
+              "Parkezy",
+              "Swift",
+              "SwiftUI",
+              "Python"
+            ],
+            "hybrid": [
+              "REST",
+              "Parkezy",
+              "Swift",
+              "SwiftUI",
+              "Python"
+            ]
+          }
+        },
+        "1d-cnn": {
+          "hit@3": true,
+          "hit@5": true,
+          "modes": {
+            "semantic": [
+              "1D-CNN",
+              "Setu AI",
+              "Swift",
+              "SwiftUI",
+              "Python"
+            ],
+            "keyword": [
+              "1D-CNN",
+              "Setu AI",
+              "Swift",
+              "SwiftUI",
+              "Python"
+            ],
+            "hybrid": [
+              "1D-CNN",
+              "Setu AI",
+              "Swift",
+              "SwiftUI",
+              "Python"
+            ]
+          }
+        }
+      },
+      "human_in_the_loop": {
+        "accept": {
+          "target": "etl",
+          "status": "USER_CONFIRMED",
+          "ok": true
+        },
+        "reject": {
+          "target": "airflow",
+          "status": "REJECTED",
+          "ok": true
+        },
+        "edit": {
+          "target": "spark",
+          "status": "USER_EDITED",
+          "ok": true
+        }
+      },
+      "generation": {
+        "skills": [
+          "REST",
+          "PostgreSQL",
+          "Real-time",
+          "Python",
+          "SQL",
+          "ETL"
+        ],
+        "bullets": 4
+      },
+      "validation": {
+        "supported": 10,
+        "unsupported": 0,
+        "needs_approval": 0
+      },
+      "ats": {
+        "original": 0.675,
+        "tailored": 0.653,
+        "delta": -0.022,
+        "missing_skills": [
+          "data pipeline"
+        ]
+      },
+      "comparison": {
+        "skills_added": [],
+        "skills_dropped": [
+          "1d-cnn",
+          "edge ai",
+          "git",
+          "iot",
+          "max78000",
+          "pandas",
+          "supabase"
+        ]
+      },
+      "anti_hallucination": {
+        "claimed_forbidden": []
+      },
+      "latency": {
+        "analyze_ms": 7,
+        "total_ms": 18,
+        "wall_ms": 18
+      },
+      "ok": true
+    },
+    {
+      "key": "ai_ml_engineer",
+      "provider": "mock",
+      "model": "-",
+      "role_extracted": "AI/ML Engineer",
+      "role_ok": true,
+      "jd_extraction": {
+        "recall": 1.0,
+        "matched": [
+          "deep learning",
+          "machine learning",
+          "python",
+          "rest"
+        ],
+        "missed": []
+      },
+      "false_positives": [],
+      "matching": {
+        "strong_ok": true,
+        "strong": {
+          "python": "STRONG_MATCH"
+        },
+        "missing_ok": true,
+        "missing": {
+          "pytorch": "MISSING",
+          "tensorflow": "MISSING"
+        }
+      },
+      "retrieval": {
+        "python": {
+          "hit@3": true,
+          "hit@5": true,
+          "modes": {
+            "semantic": [
+              "Python",
+              "Setu AI",
+              "iOS Developer at Freelance",
+              "Parkezy",
+              "Swift"
+            ],
+            "keyword": [
+              "Python",
+              "Setu AI",
+              "iOS Developer at Freelance",
+              "Parkezy",
+              "Swift"
+            ],
+            "hybrid": [
+              "Python",
+              "Setu AI",
+              "iOS Developer at Freelance",
+              "Parkezy",
+              "Swift"
+            ]
+          }
+        },
+        "feature engineering": {
+          "hit@3": true,
+          "hit@5": true,
+          "modes": {
+            "semantic": [
+              "B.Tech Computer Engineering",
+              "Setu AI",
+              "Swift",
+              "SwiftUI",
+              "Python"
+            ],
+            "keyword": [
+              "Setu AI",
+              "B.Tech Computer Engineering",
+              "Swift",
+              "SwiftUI",
+              "Python"
+            ],
+            "hybrid": [
+              "Setu AI",
+              "B.Tech Computer Engineering",
+              "Swift",
+              "SwiftUI",
+              "Python"
+            ]
+          }
+        },
+        "edge ai": {
+          "hit@3": true,
+          "hit@5": true,
+          "modes": {
+            "semantic": [
+              "Edge AI Fundamentals",
+              "Edge Impulse",
+              "Setu AI",
+              "Winner, university IoT hackathon for the Setu AI edge-AI pro",
+              "Swift"
+            ],
+            "keyword": [
+              "Edge AI Fundamentals",
+              "Setu AI",
+              "Edge Impulse",
+              "Winner, university IoT hackathon for the Setu AI edge-AI pro",
+              "Swift"
+            ],
+            "hybrid": [
+              "Edge AI Fundamentals",
+              "Setu AI",
+              "Edge Impulse",
+              "Winner, university IoT hackathon for the Setu AI edge-AI pro",
+              "Swift"
+            ]
+          }
+        }
+      },
+      "human_in_the_loop": {
+        "accept": {
+          "target": "machine learning",
+          "status": "USER_CONFIRMED",
+          "ok": true
+        },
+        "reject": {
+          "target": "deep learning",
+          "status": "REJECTED",
+          "ok": true
+        },
+        "edit": {
+          "target": "rag",
+          "status": "USER_EDITED",
+          "ok": true
+        }
+      },
+      "generation": {
+        "skills": [
+          "REST",
+          "Feature Engineering",
+          "Machine Learning",
+          "Real-time",
+          "Edge AI",
+          "Python"
+        ],
+        "bullets": 4
+      },
+      "validation": {
+        "supported": 10,
+        "unsupported": 0,
+        "needs_approval": 0
+      },
+      "ats": {
+        "original": 0.564,
+        "tailored": 0.549,
+        "delta": -0.015,
+        "missing_skills": [
+          "deep learning",
+          "rag",
+          "llm",
+          "cnn",
+          "model deployment"
+        ]
+      },
+      "comparison": {
+        "skills_added": [],
+        "skills_dropped": [
+          "1d-cnn",
+          "git",
+          "iot",
+          "max78000",
+          "pandas",
+          "supabase"
+        ]
+      },
+      "anti_hallucination": {
+        "claimed_forbidden": []
+      },
+      "latency": {
+        "analyze_ms": 7,
+        "total_ms": 21,
+        "wall_ms": 21
+      },
+      "ok": true
+    },
+    {
+      "key": "backend_engineer",
+      "provider": "mock",
+      "model": "-",
+      "role_extracted": "Backend Engineer",
+      "role_ok": true,
+      "jd_extraction": {
+        "recall": 1.0,
+        "matched": [
+          "fastapi",
+          "postgresql",
+          "python",
+          "rest"
+        ],
+        "missed": []
+      },
+      "false_positives": [],
+      "matching": {
+        "strong_ok": true,
+        "strong": {
+          "rest": "STRONG_MATCH",
+          "python": "STRONG_MATCH",
+          "fastapi": "STRONG_MATCH",
+          "postgresql": "STRONG_MATCH"
+        },
+        "missing_ok": true,
+        "missing": {
+          "docker": "MISSING",
+          "microservices": "MISSING"
+        }
+      },
+      "retrieval": {
+        "fastapi": {
+          "hit@3": true,
+          "hit@5": true,
+          "modes": {
+            "semantic": [
+              "FastAPI",
+              "iOS Developer at Freelance",
+              "Parkezy",
+              "Swift",
+              "SwiftUI"
+            ],
+            "keyword": [
+              "FastAPI",
+              "iOS Developer at Freelance",
+              "Parkezy",
+              "Swift",
+              "SwiftUI"
+            ],
+            "hybrid": [
+              "FastAPI",
+              "iOS Developer at Freelance",
+              "Parkezy",
+              "Swift",
+              "SwiftUI"
+            ]
+          }
+        },
+        "postgresql": {
+          "hit@3": true,
+          "hit@5": true,
+          "modes": {
+            "semantic": [
+              "PostgreSQL",
+              "iOS Developer at Freelance",
+              "Parkezy",
+              "Swift",
+              "SwiftUI"
+            ],
+            "keyword": [
+              "PostgreSQL",
+              "iOS Developer at Freelance",
+              "Parkezy",
+              "Swift",
+              "SwiftUI"
+            ],
+            "hybrid": [
+              "PostgreSQL",
+              "iOS Developer at Freelance",
+              "Parkezy",
+              "Swift",
+              "SwiftUI"
+            ]
+          }
+        }
+      },
+      "human_in_the_loop": {
+        "accept": {
+          "target": "docker",
+          "status": "USER_CONFIRMED",
+          "ok": true
+        },
+        "reject": {
+          "target": "api",
+          "status": "REJECTED",
+          "ok": true
+        },
+        "edit": {
+          "target": "microservices",
+          "status": "USER_EDITED",
+          "ok": true
+        }
+      },
+      "generation": {
+        "skills": [
+          "REST",
+          "PostgreSQL",
+          "Backend",
+          "FastAPI",
+          "Python",
+          "Docker"
+        ],
+        "bullets": 4
+      },
+      "validation": {
+        "supported": 10,
+        "unsupported": 0,
+        "needs_approval": 0
+      },
+      "ats": {
+        "original": 0.695,
+        "tailored": 0.65,
+        "delta": -0.045,
+        "missing_skills": [
+          "api"
+        ]
+      },
+      "comparison": {
+        "skills_added": [],
+        "skills_dropped": [
+          "1d-cnn",
+          "edge ai",
+          "git",
+          "iot",
+          "max78000",
+          "pandas",
+          "supabase"
+        ]
+      },
+      "anti_hallucination": {
+        "claimed_forbidden": []
+      },
+      "latency": {
+        "analyze_ms": 7,
+        "total_ms": 18,
+        "wall_ms": 18
+      },
+      "ok": true
+    },
+    {
+      "key": "cybersecurity_engineer",
+      "provider": "mock",
+      "model": "-",
+      "role_extracted": "Cybersecurity Engineer",
+      "role_ok": true,
+      "jd_extraction": {
+        "recall": 0.167,
+        "matched": [
+          "linux"
+        ],
+        "missed": [
+          "burp suite",
+          "networking",
+          "penetration testing",
+          "vulnerability assessment",
+          "web security"
+        ]
+      },
+      "false_positives": [],
+      "matching": {
+        "strong_ok": true,
+        "strong": {},
+        "missing_ok": true,
+        "missing": {
+          "linux": "MISSING"
+        }
+      },
+      "retrieval": {},
+      "human_in_the_loop": {
+        "accept": {
+          "target": "cybersecurity",
+          "status": "USER_CONFIRMED",
+          "ok": true
+        },
+        "reject": {
+          "target": "linux",
+          "status": "REJECTED",
+          "ok": true
+        },
+        "edit": {
+          "target": "google cloud",
+          "status": "USER_EDITED",
+          "ok": true
+        }
+      },
+      "generation": {
+        "skills": [
+          "Cybersecurity",
+          "Python"
+        ],
+        "bullets": 4
+      },
+      "validation": {
+        "supported": 6,
+        "unsupported": 0,
+        "needs_approval": 0
+      },
+      "ats": {
+        "original": 0.422,
+        "tailored": 0.413,
+        "delta": -0.009,
+        "missing_skills": [
+          "linux"
+        ]
+      },
+      "comparison": {
+        "skills_added": [],
+        "skills_dropped": [
+          "1d-cnn",
+          "edge ai",
+          "git",
+          "iot",
+          "max78000",
+          "pandas",
+          "supabase"
+        ]
+      },
+      "anti_hallucination": {
+        "claimed_forbidden": []
+      },
+      "latency": {
+        "analyze_ms": 5,
+        "total_ms": 15,
+        "wall_ms": 15
+      },
+      "ok": true
+    }
+  ],
+  "summary": {
+    "runs": 4,
+    "ok": 4,
+    "role_ok_all": true,
+    "strong_ok_all": true,
+    "missing_ok_all": true,
+    "no_false_positives": true,
+    "hitl_ok_all": true,
+    "anti_hallucination_clean": true,
+    "avg_jd_recall": 0.792,
+    "avg_ats_delta": -0.023,
+    "total_unsupported_claims": 0,
+    "avg_total_ms": 18.0
+  }
+}
