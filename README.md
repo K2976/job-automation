@@ -37,7 +37,8 @@ Resume ingestion (PDF/DOCX/text) · candidate knowledge base with inline editing
 analysis · hybrid retrieval (semantic + keyword + structured filters) · evidence matching ·
 gap analysis · modification plan · approval workflow · tailored generation · claim
 validation · JD-alignment/ATS analysis · explainability · original-vs-tailored comparison ·
-PDF/HTML/Markdown export · reusable role-view snapshots · live Gemini/Groq or offline mock.
+professional LaTeX PDF (+ reportlab PDF/HTML/Markdown/.tex) export · reusable role-view
+snapshots · live Gemini/Groq or offline mock.
 
 ## Architecture at a glance
 
@@ -49,7 +50,7 @@ PDF/HTML/Markdown export · reusable role-view snapshots · live Gemini/Groq or 
 | Vector search | **numpy cosine** | KB is tiny; no vector DB — [ADR-002](docs/decisions/ADR-002-numpy-over-pgvector.md) |
 | LLM | `LLMProvider`: mock / Gemini / Groq | [ADR-003](docs/decisions/ADR-003-llm-provider-abstraction.md) |
 | Embeddings | `EmbeddingProvider`: local TF-IDF / Gemini | [ADR-004](docs/decisions/ADR-004-local-embedding-default.md) |
-| Export | reportlab (PDF), HTML, Markdown | over the structured résumé model |
+| Export | **LaTeX template → PDF** (tectonic), reportlab PDF, HTML, Markdown, `.tex` | deterministic renderer over the structured model — [resume-template-system.md](docs/resume-template-system.md) |
 
 The **mock LLM + local TF-IDF embedder are the defaults**, so the whole system runs and
 is tested fully offline with **no API keys**. Gemini/Groq are opt-in via env vars.

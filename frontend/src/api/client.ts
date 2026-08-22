@@ -95,6 +95,6 @@ export const api = {
   listRoleProfiles: (candidateId: number) =>
     req<{ role_profiles: RoleProfile[] }>(`/api/candidates/${candidateId}/role-profiles`),
 
-  exportUrl: (jobId: number, fmt: 'pdf' | 'html' | 'md') =>
+  exportUrl: (jobId: number, fmt: 'pdf' | 'html' | 'md' | 'tex' | 'latex.pdf') =>
     url(`/api/jobs/${jobId}/export.${fmt}`),
 }

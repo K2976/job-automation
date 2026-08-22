@@ -1,0 +1,8 @@
+{
+  "name": "Kartik Professional",
+  "version": "1.0",
+  "class_file": "resume.cls",
+  "template_file": "template.tex.j2",
+  "sections": ["header", "summary", "skills", "projects", "experience", "education"],
+  "max_pages": 2
+}

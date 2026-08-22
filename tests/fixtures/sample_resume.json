@@ -1,0 +1,57 @@
+{
+  "candidate": {
+    "name": "Ada Lovelace",
+    "email": "ada@example.com",
+    "phone": "+1 (555) 010-1234",
+    "location": "London, UK",
+    "headline": "Systems & ML engineer",
+    "links": ["https://github.com/ada", "https://www.linkedin.com/in/ada"]
+  },
+  "target_role": "Data Engineer",
+  "summary": "Engineer with R&D depth; shipped a pipeline that cut latency 50% using C++ and C#.",
+  "skills": ["Python", "C++", "C#", "SQL", "PostgreSQL", "Node.js"],
+  "sections": [
+    {
+      "title": "Projects",
+      "entries": [
+        {
+          "heading": "Analytica_Engine",
+          "subheading": "Lead Developer",
+          "date": "",
+          "bullets": [
+            {"text": "Built an ETL layer processing 50% more rows/sec with foo_bar tuning.", "status": "GENERATED", "evidence_entity_id": 1},
+            {"text": "Wrote C++ & C# interop and a $ROOT-based config loader.", "status": "GENERATED", "evidence_entity_id": 1}
+          ]
+        }
+      ],
+      "bullets": []
+    },
+    {
+      "title": "Experience",
+      "entries": [
+        {
+          "heading": "Acme R&D",
+          "subheading": "Data Engineer",
+          "date": "2022 -- Present",
+          "bullets": [
+            {"text": "Owned the {analytics} warehouse and 100% of ingestion.", "status": "GENERATED", "evidence_entity_id": 2}
+          ]
+        }
+      ],
+      "bullets": []
+    },
+    {
+      "title": "Awards",
+      "entries": [],
+      "bullets": [
+        {"text": "First Prize, University Hackathon (R&D track)", "status": "GENERATED", "evidence_entity_id": null}
+      ]
+    },
+    {
+      "title": "Empty Section",
+      "entries": [],
+      "bullets": []
+    }
+  ],
+  "markdown": ""
+}

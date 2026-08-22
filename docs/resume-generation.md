@@ -25,7 +25,11 @@ projects + **approved** rewrites + confirmed skills + emphasis order. It:
 - orders projects by relevance and drops clearly-irrelevant ones;
 - uses approved rewrite text where the candidate approved it, else the original summary;
 - tags every generated bullet `GENERATED` with `evidence_entity_id` back to its source;
-- renders Markdown (`render_markdown`), extensible to HTML/PDF/DOCX later.
+- also builds structured `ResumeSection.entries` (heading / date / subheading / bullets)
+  from the same supported evidence — the professional LaTeX layout needs them; the flat
+  `bullets` are still filled for the reportlab/HTML/Markdown/preview renderers;
+- renders Markdown (`render_markdown`); the structured model also drives HTML, a reportlab
+  PDF, and the LaTeX template renderer (see [resume-template-system.md](resume-template-system.md)).
 
 ## What it does not do
 It never copies the whole KB into every résumé, and never emits a skill the candidate

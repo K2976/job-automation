@@ -24,3 +24,7 @@ pytest>=8.0
 
 # Optional, opt-in only (EMBEDDING_PROVIDER unaffected by default):
 #   sentence-transformers  -> heavier local semantic embeddings (pulls torch)
+
+# Professional-PDF export uses jinja2 (above) to render LaTeX. Compilation needs a LaTeX
+# engine on PATH — NOT a pip package: install `tectonic` (recommended) or a TeX distro.
+# Without one, .tex export still works and reportlab PDF is the fallback (docs/deployment.md).

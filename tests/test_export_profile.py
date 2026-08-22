@@ -38,6 +38,19 @@ def test_export_endpoints(candidate_id):
     assert client.get(f"/api/jobs/{job_id}/export.html").text.startswith("<!doctype")
 
 
+def test_latex_export_endpoints(candidate_id):
+    _, job_id = _generate(candidate_id)
+    client = TestClient(app)
+    tex = client.get(f"/api/jobs/{job_id}/export.tex")
+    assert tex.status_code == 200 and "\\documentclass{resume}" in tex.text
+    # Professional PDF: 200 %PDF where a LaTeX engine exists, else a friendly 503 —
+    # never an unhandled 500 (§35).
+    pdf = client.get(f"/api/jobs/{job_id}/export.latex.pdf")
+    assert pdf.status_code in (200, 503)
+    if pdf.status_code == 200:
+        assert pdf.content[:5] == b"%PDF-"
+
+
 def test_profile_editing(candidate_id):
     client = TestClient(app)
     # edit candidate header

@@ -11,6 +11,7 @@ from .models import (
     MatchStatus,
     RequirementMatch,
     ResumeBullet,
+    ResumeEntry,
     ResumeSection,
     Status,
     TailoredResume,
@@ -35,6 +36,17 @@ def _relevant_skills(entities: list[KBEntity], confirmed_skills: list[str],
     relevant = [s for s in have if s in jd_order]
     relevant.sort(key=lambda s: jd_order[s])
     return relevant
+
+
+def _daterange(start: str | None, end: str | None) -> str:
+    return " -- ".join(x for x in (start, end) if x)
+
+
+def _entry(heading: str, subheading: str, date: str, bullet_texts: list[str],
+           evidence_id: int | None) -> ResumeEntry:
+    bullets = [ResumeBullet(text=t, status=Status.GENERATED, evidence_entity_id=evidence_id)
+               for t in bullet_texts if t and t.strip()]
+    return ResumeEntry(heading=heading, subheading=subheading, date=date, bullets=bullets)
 
 
 def generate_resume(
@@ -64,18 +76,33 @@ def generate_resume(
         proj_section.bullets.append(ResumeBullet(
             text=f"{ent.name}: {text}", status=Status.GENERATED,
             evidence_entity_id=ent.id))
+        # Structured entry for the LaTeX layout — bullets drawn from approved rewrite or
+        # the project's ORIGINAL responsibilities (all supported evidence, never invented).
+        rewrite = approved_rewrites.get(ent.name)
+        pts = [rewrite] if rewrite else (ent.data.get("responsibilities") or [text])[:3]
+        proj_section.entries.append(_entry(ent.name, "", "", pts, ent.id))
 
     exp_section = ResumeSection(title="Experience")
     for e in entities:
         if e.entity_type == EntityType.experience:
             exp_section.bullets.append(ResumeBullet(
                 text=e.content, status=Status.GENERATED, evidence_entity_id=e.id))
+            d = e.data
+            pts = (d.get("highlights") or ([d["description"]] if d.get("description") else []))
+            exp_section.entries.append(_entry(
+                d.get("company") or e.name, d.get("title", ""),
+                _daterange(d.get("start"), d.get("end")), pts[:3], e.id))
 
     edu_section = ResumeSection(title="Education")
     for e in entities:
         if e.entity_type == EntityType.education:
             edu_section.bullets.append(ResumeBullet(
                 text=e.content, status=Status.GENERATED, evidence_entity_id=e.id))
+            d = e.data
+            sub = ", ".join(x for x in (d.get("degree"), d.get("field")) if x)
+            edu_section.entries.append(_entry(
+                d.get("institution") or e.name, sub,
+                _daterange(d.get("start"), d.get("end")), [], e.id))
 
     highlights = [f"{s.entity.name} ({', '.join(extract_skills(s.entity.content)[:3])})"
                   for s in kept[:2]]

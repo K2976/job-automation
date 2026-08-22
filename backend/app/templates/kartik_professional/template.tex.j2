@@ -1,0 +1,46 @@
+%% Adaptive Resume Engineer — generated document. Do not edit by hand.
+%% Content comes from the approved structured résumé; layout comes from resume.cls.
+%% Rendered by app/latex.py with LaTeX-safe Jinja delimiters (see that module).
+\documentclass{resume}
+\usepackage[left=0.4in,top=0.3in,right=0.75in,bottom=0.3in]{geometry}
+\usepackage{fontawesome}
+\usepackage{times}
+
+\name{\VAR{ name }}
+\BLOCK{ if contact_line }
+\address{\VAR{ contact_line }}
+\BLOCK{ endif }
+\BLOCK{ if location_line }
+\address{\VAR{ location_line }}
+\BLOCK{ endif }
+
+\begin{document}
+\BLOCK{ if summary }
+\begin{rSection}{Summary}
+\VAR{ summary | e }
+\end{rSection}
+\BLOCK{ endif }
+\BLOCK{ if skills }
+\begin{rSection}{Skills}
+{\bf Skills: } \VAR{ skills | join(', ') | e }
+\end{rSection}
+\BLOCK{ endif }
+\BLOCK{ for section in sections }
+\begin{rSection}{\VAR{ section.title | e }}
+\BLOCK{ for entry in section.entries }
+{\bf \VAR{ entry.heading | e }} \BLOCK{ if entry.date }\hfill {\em \VAR{ entry.date | e }}\BLOCK{ endif }
+\BLOCK{ if entry.subheading }
+\\ {\em \VAR{ entry.subheading | e }}
+\BLOCK{ endif }
+\BLOCK{ for bullet in entry.bullets }
+\\ - \VAR{ bullet | e }
+\BLOCK{ endfor }
+\smallskip
+
+\BLOCK{ endfor }
+\BLOCK{ for bullet in section.plain_bullets }
+- \VAR{ bullet | e } \\
+\BLOCK{ endfor }
+\end{rSection}
+\BLOCK{ endfor }
+\end{document}

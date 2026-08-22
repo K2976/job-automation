@@ -57,6 +57,22 @@ Add to `render.yaml` and set `DATABASE_URL` to the mount path:
 This requires a paid Render instance. Larger scale → Postgres (swap `db.py`; see
 [ADR-001](decisions/ADR-001-sqlite-over-postgres.md)) — not needed for V1.
 
+## Professional PDF (LaTeX) — optional
+The default free deploy has **no** LaTeX engine, so `export.latex.pdf` returns a friendly
+503 and the reportlab **PDF (standard)** stays the working default — nothing breaks (see
+[resume-template-system.md](resume-template-system.md)).
+
+To enable the professional PDF in production, install **tectonic** (single binary, no
+apt) in the build and put it on `PATH`, e.g. prepend to the Render `buildCommand`:
+```bash
+curl -fsSL https://github.com/tectonic-typesetting/tectonic/releases/latest/download/tectonic-x86_64-unknown-linux-gnu.tar.gz \
+  | tar xz -C /usr/local/bin && pip install -r requirements.txt
+```
+Tectonic fetches LaTeX packages on first run, so the first compile after a cold start is
+slower; the free tier's ephemeral disk means that cost recurs on each spin-up. For a
+snappier/offline option use a Docker runtime with a slim TeX image. Not required for V1 —
+reportlab is the reliable fallback.
+
 ## Single-host alternative (simplest)
 Skip Vercel entirely: `cd frontend && npm run build`, then run the backend — FastAPI serves
 `frontend/dist` at `/`. One origin, no CORS, no `VITE_API_BASE`. Good for a self-hosted box.

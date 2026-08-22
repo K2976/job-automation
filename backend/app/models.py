@@ -229,10 +229,22 @@ class ResumeBullet(BaseModel):
     evidence_entity_id: Optional[int] = None
 
 
+class ResumeEntry(BaseModel):
+    """A structured item within a section (a project / job / degree). Carries the fields
+    the professional LaTeX layout needs — bold heading, right-aligned date, italic
+    subheading — which a flat bullet string can't express. `date`/`subheading` are
+    optional; the renderer skips them when blank (e.g. projects have no date)."""
+    heading: str = ""
+    subheading: str = ""
+    date: str = ""
+    bullets: list[ResumeBullet] = Field(default_factory=list)
+
+
 class ResumeSection(BaseModel):
     title: str
     name: str = ""
-    bullets: list[ResumeBullet] = Field(default_factory=list)
+    entries: list[ResumeEntry] = Field(default_factory=list)   # structured items (LaTeX)
+    bullets: list[ResumeBullet] = Field(default_factory=list)  # flat items / legacy render
 
 
 class TailoredResume(BaseModel):

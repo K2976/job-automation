@@ -43,8 +43,11 @@ export default function Resume({ engine }: { engine: Engine }) {
         <div className="ml-auto flex items-center gap-2">
           {saved && <span className="text-[13px] text-success">{saved}</span>}
           <Button size="sm" variant="ghost" onClick={save}>Save as view</Button>
+          <a href={api.exportUrl(jobId, 'latex.pdf')} target="_blank" rel="noreferrer">
+            <Button size="sm" icon={icons.doc}>Professional PDF</Button></a>
           <a href={api.exportUrl(jobId, 'pdf')} target="_blank" rel="noreferrer">
-            <Button size="sm" icon={icons.doc}>Download PDF</Button></a>
+            <Button size="sm" variant="ghost">PDF (standard)</Button></a>
+          <a href={api.exportUrl(jobId, 'tex')} target="_blank" rel="noreferrer" className="text-[13px] text-muted underline underline-offset-4 hover:text-ink">.tex</a>
           <a href={api.exportUrl(jobId, 'html')} target="_blank" rel="noreferrer" className="text-[13px] text-muted underline underline-offset-4 hover:text-ink">HTML</a>
           <a href={api.exportUrl(jobId, 'md')} target="_blank" rel="noreferrer" className="text-[13px] text-muted underline underline-offset-4 hover:text-ink">Markdown</a>
         </div>
