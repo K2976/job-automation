@@ -135,6 +135,23 @@ def _requirement_coverage(matches: list[RequirementMatch]) -> float:
     return good / len(matches)
 
 
+def why_apply(opp: Opportunity) -> dict:
+    """'Why this opportunity?' (§19) — reuses the V1 match evidence, no new reasoning."""
+    strong = [m.requirement for m in opp.matches
+              if m.match_status == MatchStatus.STRONG_MATCH]
+    partial = [m.requirement for m in opp.matches
+               if m.match_status == MatchStatus.PARTIAL_MATCH]
+    gaps = [m.requirement for m in opp.matches if m.match_status == MatchStatus.MISSING]
+    ev: dict[str, float] = {}
+    for m in opp.matches:
+        for e in m.evidence:
+            ev[e.name] = max(ev.get(e.name, 0.0), e.score)
+    best = [n for n, _ in sorted(ev.items(), key=lambda x: -x[1])[:5]]
+    return {"match_score": opp.match_score, "opportunity_score": opp.opportunity_score,
+            "strong_matches": strong, "partial_matches": partial, "gaps": gaps,
+            "best_evidence": best}
+
+
 def opportunity_score(opp: Opportunity, prefs: SearchPreferences) -> float:
     """Final deterministic ranking blend (§18). Reproducible: given the same stored opp +
     prefs it always yields the same number, even though an LLM produced `matches`."""

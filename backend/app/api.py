@@ -35,7 +35,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Adaptive Resume Engineer", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="Adaptive Resume Engineer", version="0.2.0", lifespan=lifespan)
 
 # Allow the frontend to call the API when they're deployed on different hosts
 # (e.g. Vercel + Render). No cookies/credentials are used.
@@ -46,6 +46,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# V2 — Opportunity Intelligence routes.
+from .opportunities_api import router as opportunities_router  # noqa: E402
+app.include_router(opportunities_router)
 
 
 # ------------------------------------------------------------------ requests #
