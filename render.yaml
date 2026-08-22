@@ -10,6 +10,8 @@ services:
     plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.api:app --app-dir backend --host 0.0.0.0 --port $PORT
+    # HTTP liveness — restarts the service if the app hangs while still holding the port.
+    healthCheckPath: /api/health
     envVars:
       - key: PYTHON_VERSION
         value: "3.12.7"
