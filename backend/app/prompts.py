@@ -73,6 +73,24 @@ def cover_letter(company: str, role: str, jd_text: str, evidence: str) -> tuple[
     return system, user
 
 
+def application_answer(question: str, jd: str, evidence: str) -> tuple[str, str]:
+    system = (
+        "You answer a single job-application question concisely and truthfully, using ONLY "
+        "the candidate evidence provided. Never invent metrics, responsibilities, "
+        "achievements, employers, dates or credentials. If the evidence does not support a "
+        "confident answer, set requires_review true and keep the answer minimal. " + _JSON_RULE
+    )
+    user = (
+        "Schema keys: answer (str), source_evidence (str[] — evidence names you used), "
+        "confidence (0..1), requires_review (bool).\n\n"
+        f"QUESTION:\n{question}\n\n"
+        f"ROLE CONTEXT (JD, for tone only):\n{jd[:1200]}\n\n"
+        f"CANDIDATE EVIDENCE (the only facts you may use):\n{evidence}\n\n"
+        "Answer as JSON:"
+    )
+    return system, user
+
+
 def summary(role: str, highlights: list[str]) -> tuple[str, str]:
     system = (
         "You write a 2-3 sentence professional summary for a resume targeting a role. "

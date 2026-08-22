@@ -61,6 +61,11 @@ class LLMProvider(ABC):
         s, u = prompts.cover_letter(company, role, jd_text, evidence)
         return self._complete(s, u).strip()
 
+    def answer_question(self, question: str, jd: str, evidence: str):
+        from ..models import ApplicationAnswer
+        s, u = prompts.application_answer(question, jd, evidence)
+        return self._complete_json(s, u, ApplicationAnswer)
+
 
 _JSON_SUFFIX = "Return ONLY valid minified JSON, no markdown fences."
 
@@ -239,6 +244,21 @@ class MockLLMProvider(LLMProvider):
         p3 = ("I would welcome the opportunity to discuss how my background fits this role. "
               "Thank you for your consideration.")
         return f"{p1}\n\n{p2}\n\n{p3}"
+
+    def answer_question(self, question: str, jd: str, evidence: str):
+        from ..models import ApplicationAnswer
+        if not evidence.strip():
+            # No evidence to ground an answer — flag for review rather than invent one.
+            return ApplicationAnswer(answer="", source_evidence=[], confidence=0.0,
+                                     requires_review=True)
+        skills = [prettify_skill(s) for s in extract_skills(evidence + " " + question)[:5]]
+        focus = ", ".join(dict.fromkeys(skills)) or "my background"
+        ev_names = [ln.split(":", 1)[0].strip() for ln in evidence.splitlines()
+                    if ln.strip()][:3]
+        tail = f", demonstrated in {', '.join(ev_names)}," if ev_names else ""
+        answer = f"My hands-on experience with {focus}{tail} makes me a strong fit for this role."
+        return ApplicationAnswer(answer=answer, source_evidence=ev_names, confidence=0.6,
+                                 requires_review=False)
 
 
 # --------------------------------------------------------------------------- #
