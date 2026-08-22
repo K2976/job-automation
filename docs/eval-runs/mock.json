@@ -1,7 +1,7 @@
 {
   "provider": "mock",
   "model": "mock",
-  "generated_at": "2026-08-22T10:28:58",
+  "generated_at": "2026-08-22T10:40:37",
   "config": {
     "embeddings": "local",
     "retrieval_top_k": 8
@@ -29,16 +29,16 @@
         "strong_ok": true,
         "strong": {
           "sql": "STRONG_MATCH",
+          "postgresql": "STRONG_MATCH",
           "python": "STRONG_MATCH",
-          "rest": "STRONG_MATCH",
-          "postgresql": "STRONG_MATCH"
+          "rest": "STRONG_MATCH"
         },
         "missing_ok": true,
         "missing": {
-          "dbt": "MISSING",
           "etl": "MISSING",
+          "airflow": "MISSING",
           "spark": "MISSING",
-          "airflow": "MISSING"
+          "dbt": "MISSING"
         }
       },
       "retrieval": {
@@ -125,6 +125,11 @@
         }
       },
       "human_in_the_loop": {
+        "rewrite_accept": {
+          "target": "Parkezy",
+          "status": "USER_CONFIRMED",
+          "ok": true
+        },
         "accept": {
           "target": "etl",
           "status": "USER_CONFIRMED",
@@ -159,8 +164,8 @@
       },
       "ats": {
         "original": 0.675,
-        "tailored": 0.653,
-        "delta": -0.022,
+        "tailored": 0.663,
+        "delta": -0.012,
         "missing_skills": [
           "data pipeline"
         ]
@@ -173,8 +178,7 @@
           "git",
           "iot",
           "max78000",
-          "pandas",
-          "supabase"
+          "pandas"
         ]
       },
       "anti_hallucination": {
@@ -182,8 +186,8 @@
       },
       "latency": {
         "analyze_ms": 7,
-        "total_ms": 18,
-        "wall_ms": 18
+        "total_ms": 19,
+        "wall_ms": 19
       },
       "ok": true
     },
@@ -299,6 +303,11 @@
         }
       },
       "human_in_the_loop": {
+        "rewrite_accept": {
+          "target": "Setu AI",
+          "status": "USER_CONFIRMED",
+          "ok": true
+        },
         "accept": {
           "target": "machine learning",
           "status": "USER_CONFIRMED",
@@ -333,8 +342,8 @@
       },
       "ats": {
         "original": 0.564,
-        "tailored": 0.549,
-        "delta": -0.015,
+        "tailored": 0.559,
+        "delta": -0.005,
         "missing_skills": [
           "deep learning",
           "rag",
@@ -346,10 +355,8 @@
       "comparison": {
         "skills_added": [],
         "skills_dropped": [
-          "1d-cnn",
           "git",
           "iot",
-          "max78000",
           "pandas",
           "supabase"
         ]
@@ -384,10 +391,10 @@
       "matching": {
         "strong_ok": true,
         "strong": {
-          "rest": "STRONG_MATCH",
-          "python": "STRONG_MATCH",
           "fastapi": "STRONG_MATCH",
-          "postgresql": "STRONG_MATCH"
+          "postgresql": "STRONG_MATCH",
+          "python": "STRONG_MATCH",
+          "rest": "STRONG_MATCH"
         },
         "missing_ok": true,
         "missing": {
@@ -452,6 +459,11 @@
         }
       },
       "human_in_the_loop": {
+        "rewrite_accept": {
+          "target": "Parkezy",
+          "status": "USER_CONFIRMED",
+          "ok": true
+        },
         "accept": {
           "target": "docker",
           "status": "USER_CONFIRMED",
@@ -486,8 +498,8 @@
       },
       "ats": {
         "original": 0.695,
-        "tailored": 0.65,
-        "delta": -0.045,
+        "tailored": 0.66,
+        "delta": -0.035,
         "missing_skills": [
           "api"
         ]
@@ -500,15 +512,14 @@
           "git",
           "iot",
           "max78000",
-          "pandas",
-          "supabase"
+          "pandas"
         ]
       },
       "anti_hallucination": {
         "claimed_forbidden": []
       },
       "latency": {
-        "analyze_ms": 7,
+        "analyze_ms": 6,
         "total_ms": 18,
         "wall_ms": 18
       },
@@ -544,6 +555,11 @@
       },
       "retrieval": {},
       "human_in_the_loop": {
+        "rewrite_accept": {
+          "target": "Parkezy",
+          "status": "USER_CONFIRMED",
+          "ok": true
+        },
         "accept": {
           "target": "cybersecurity",
           "status": "USER_CONFIRMED",
@@ -588,8 +604,7 @@
           "git",
           "iot",
           "max78000",
-          "pandas",
-          "supabase"
+          "pandas"
         ]
       },
       "anti_hallucination": {
@@ -613,8 +628,8 @@
     "hitl_ok_all": true,
     "anti_hallucination_clean": true,
     "avg_jd_recall": 0.792,
-    "avg_ats_delta": -0.023,
+    "avg_ats_delta": -0.015,
     "total_unsupported_claims": 0,
-    "avg_total_ms": 18.0
+    "avg_total_ms": 18.25
   }
 }

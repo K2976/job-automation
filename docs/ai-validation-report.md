@@ -22,8 +22,9 @@ Every result below is tagged so claims aren't overstated:
   cybersecurity requirement recall was **0.17 (mock) → 0.83 (Groq) → ~1.0 (Gemini)**.
 - **Project reframing works** — the motivating use case. Live Groq rewrote an iOS project
   into a data/backend narrative, truthfully, with zero unsupported claims (§7 below).
-- **The claim validator catches live hallucination.** Groq introduced one unsupported
-  claim on the cybersecurity résumé; the deterministic validator flagged it. *Verified.*
+- **The claim validator catches live hallucination.** On the *reframed* live-Groq résumés,
+  generation introduced 2 unsupported claims (Backend, Cybersecurity); the deterministic
+  validator flagged all of them. *Verified.*
 - **Provider failures are handled cleanly** (retry/timeout/no key leak/no data corruption).
   A real Gemini free-tier 429 mid-run was handled gracefully. *Verified.*
 
@@ -33,8 +34,9 @@ Every result below is tagged so claims aren't overstated:
   regression; a metric limitation (§9).
 - **Hybrid retrieval's semantic benefit is unproven offline** — the default embedder is
   TF-IDF (lexical), so semantic ≈ keyword. Needs Gemini embeddings to measure. *Not Tested.*
-- **Gemini free-tier is slow and rate-limited** — ~54s/JD and a 429 on the 4th JD, vs
-  Groq's ~7s and 4/4. *Observed.*
+- **Gemini free-tier is slow and rate-limited** — ~30–54s/JD and repeated 429s (completed
+  only 1/4 and 3/4 across two runs), vs Groq's ~7s and 4/4 every time. Correct when it runs.
+  *Observed.*
 - **Manual-benchmark comparison (§15) not done** — the candidate's hand-tailored DE résumé
   was not provided. *Not Tested.*
 
@@ -126,26 +128,38 @@ motivated the project. *Subjective (one reviewer, one JD), strongly positive.*
 ---
 
 ## 8. Résumé generation & claim validation results (§16, §17)
-**Live Groq DE résumé** (same run): Summary reframed to "building real-time data solutions…
-Python and SQL for designing, implementing and optimizing data pipelines"; Skills reduced to
-`Python, SQL, PostgreSQL` (iOS-only skills dropped); **validation: 6 supported, 0
+The systematic runner **accepts the top project rewrite**, so validation/ATS below score the
+**reframed** résumé — the product's real output after a user accepts a suggestion, and the
+highest-risk content for the validator.
+
+Hand-inspected **live Groq DE résumé** (§7 run): Summary reframed to "building real-time data
+solutions… Python and SQL for designing, implementing and optimizing data pipelines"; Skills
+reduced to `Python, SQL, PostgreSQL` (iOS-only skills dropped); **6 supported, 0
 unsupported.** *Observed / Subjective — role-relevant, specific, coherent.*
 
-**Hallucination detection:** on the cybersecurity JD, live Groq generation produced **1
-unsupported claim**, which the deterministic validator **flagged** (`unsupported=1`) — the
-anti-hallucination layer works on live output, not just constructed tests. Constructed
-hallucination cases (invented metric "250%", unsupported Kubernetes) are also flagged —
-*Verified* (`test_validation_ats`). One limitation: **Experience entries are not reframed**
-(only projects get REWRITE suggestions) — see §11.
+**Hallucination detection on the reframed live output.** Across the 4 reframed Groq
+résumés, live generation introduced **2 unsupported claims** (on the Backend and
+Cybersecurity résumés), and the deterministic validator **flagged all of them**
+(`unsupported` = 1 each; DE and AI/ML = 0). This is the important result: when the LLM
+reframes a project it sometimes over-reaches, and the anti-hallucination layer catches it on
+*live* output — not just on constructed cases. Constructed cases (invented metric "250%",
+unsupported Kubernetes) are also flagged — *Verified* (`test_validation_ats`).
+
+Limitation: **Experience entries are not reframed** (only projects get REWRITE suggestions) —
+see §13.
 
 ---
 
 ## 9. ATS / JD-alignment results (§18)
-Tailored vs a same-scorer "everything" baseline: **Δ ≈ −0.07 … +0.11** (mostly slightly
-negative). *Observed.* **Finding:** the alignment score is coverage-based, so a focused
-résumé (which *drops* irrelevant content) cannot out-score a kitchen-sink résumé on it. The
-tailoring value shows in the **comparison** (skills dropped) and **validation**, not in a
-higher ATS number. Per §18/§24 the formula was **not** tuned to force the number up.
+Tailored (reframed) vs a same-scorer "everything" baseline: **Δ ≈ −0.08 … +0.06**, mostly
+slightly negative. *Observed.* **Finding:** the alignment score is coverage-based, so a
+focused résumé (which *drops* irrelevant content) cannot out-score a kitchen-sink résumé on
+it. The negative delta is **partly a baseline artifact**: `project_relevance = min(1,
+n_bullets/3)` and the baseline keeps *all* projects while the tailored résumé *drops* some,
+so tailored almost mechanically scores lower on that component. This is **not** evidence that
+tailoring is worse — the tailoring value shows in the **comparison** (skills dropped),
+**validation**, and the qualitative reframe (§7), not in a higher ATS number. Per §18/§24 the
+formula was **not** tuned to force the number up.
 
 ---
 
@@ -161,17 +175,20 @@ project reordering — *Verified* (`test_pipeline_e2e`).
 
 | Metric | Groq `gpt-oss-120b` | Gemini `gemini-3.6-flash` |
 |---|---|---|
-| JDs completed | **4 / 4** | 3 / 4 (429 on the 4th, free tier) |
-| Avg JD recall | 0.96 | 1.00 (of 3) |
+| JDs completed (reframed run) | **4 / 4** | **1 / 4** — 3 hit free-tier 429 |
+| Avg JD recall (completed) | 0.96 | 1.00 |
 | Evidence matching (strong/missing) | all correct | all correct |
 | Human-in-the-loop | all correct | all correct |
-| Unsupported claims (caught by validator) | 1 (cyber) | 0 (cyber not run) |
-| Structured-output reliability | 4/4 valid | 3/3 valid |
-| **Avg latency / JD** | **~7.4 s** | **~54 s** |
+| Unsupported claims (caught by validator) | 2 (Backend, Cyber) | 1 (DE) |
+| Structured-output reliability | 4/4 valid | valid on every call that wasn't rate-limited |
+| **Avg latency / JD** | **~7 s** | **~30–54 s** |
 
-*Observed.* Both drive the pipeline correctly with valid structured output. The deterministic
-layer is identical either way. The separator is **operational: Groq is ~7× faster and hit no
-rate limits.**
+*Observed.* Both drive the pipeline correctly with valid structured output, and both
+produced correct deterministic-facing results with high JD recall. **Gemini is
+correct-when-it-runs but its free tier could not sustain the suite** — an earlier run
+completed 3/4, the reframed run only 1/4 before repeated 429s (the runner handled every 429
+gracefully, no corruption). **Groq completed 4/4 on every run at ~7× lower latency and no
+rate limits.** The separator is operational, not quality.
 
 ---
 
@@ -198,8 +215,10 @@ Corroborated live: the Gemini 429 aborted one JD without corrupting the run.
    measured offline; or run the eval with `EMBEDDING_PROVIDER=gemini`.
 3. Consider a relevance/focus component in the ATS score (carefully; don't just inflate it).
 4. Extend REWRITE suggestions to experience entries, not only projects.
-5. Obtain the candidate's manual DE résumé and run the §15 benchmark; broaden to more
-   candidates.
+5. **Run the §15 manual benchmark** — the candidate has a hand-tailored Data Engineer
+   résumé. Drop the file in and it can be compared (skills emphasized, projects selected,
+   keyword coverage, unsupported claims) against the AI output. Currently **Not Tested**.
+   Broaden to more candidates thereafter.
 
 ## 15. Model selection (§28)
 Evidence supports **Groq `openai/gpt-oss-120b` as the default** for all LLM tasks: equal

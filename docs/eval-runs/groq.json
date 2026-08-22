@@ -1,7 +1,7 @@
 {
   "provider": "groq",
   "model": "openai/gpt-oss-120b",
-  "generated_at": "2026-08-22T10:29:28",
+  "generated_at": "2026-08-22T10:41:17",
   "config": {
     "embeddings": "local",
     "retrieval_top_k": 8
@@ -28,9 +28,9 @@
       "matching": {
         "strong_ok": true,
         "strong": {
-          "python": "STRONG_MATCH",
           "postgresql": "STRONG_MATCH",
-          "sql": "STRONG_MATCH"
+          "sql": "STRONG_MATCH",
+          "python": "STRONG_MATCH"
         },
         "missing_ok": true,
         "missing": {
@@ -121,6 +121,11 @@
         }
       },
       "human_in_the_loop": {
+        "rewrite_accept": {
+          "target": "Parkezy",
+          "status": "USER_CONFIRMED",
+          "ok": true
+        },
         "accept": {
           "target": "Apache Airflow",
           "status": "USER_CONFIRMED",
@@ -153,8 +158,8 @@
       },
       "ats": {
         "original": 0.465,
-        "tailored": 0.393,
-        "delta": -0.072,
+        "tailored": 0.381,
+        "delta": -0.084,
         "missing_skills": [
           "relational data modeling",
           "ETL/data pipelines",
@@ -176,6 +181,7 @@
           "iot",
           "max78000",
           "pandas",
+          "real-time",
           "supabase"
         ]
       },
@@ -183,9 +189,9 @@
         "claimed_forbidden": []
       },
       "latency": {
-        "analyze_ms": 4918,
-        "total_ms": 5869,
-        "wall_ms": 5869
+        "analyze_ms": 5233,
+        "total_ms": 6397,
+        "wall_ms": 6397
       },
       "ok": true
     },
@@ -208,9 +214,7 @@
       "false_positives": [],
       "matching": {
         "strong_ok": true,
-        "strong": {
-          "python": "STRONG_MATCH"
-        },
+        "strong": {},
         "missing_ok": true,
         "missing": {}
       },
@@ -298,6 +302,11 @@
         }
       },
       "human_in_the_loop": {
+        "rewrite_accept": {
+          "target": "Setu AI",
+          "status": "USER_CONFIRMED",
+          "ok": true
+        },
         "accept": {
           "target": "Machine learning and deep learning (CNN and related architectures)",
           "status": "USER_CONFIRMED",
@@ -318,20 +327,22 @@
         "skills": [
           "Machine Learning And Deep Learning (cnn And Related Architectures)",
           "Python",
-          "CNN"
+          "CNN",
+          "Edge AI"
         ],
         "bullets": 4
       },
       "validation": {
-        "supported": 7,
+        "supported": 8,
         "unsupported": 0,
         "needs_approval": 0
       },
       "ats": {
-        "original": 0.471,
-        "tailored": 0.456,
-        "delta": -0.015,
+        "original": 0.457,
+        "tailored": 0.443,
+        "delta": -0.014,
         "missing_skills": [
+          "Strong Python",
           "Feature engineering and data processing",
           "Model deployment and evaluation",
           "Integrating models via REST APIs"
@@ -341,10 +352,8 @@
         "skills_added": [],
         "skills_dropped": [
           "1d-cnn",
-          "edge ai",
           "git",
           "iot",
-          "max78000",
           "pandas",
           "supabase"
         ]
@@ -353,9 +362,9 @@
         "claimed_forbidden": []
       },
       "latency": {
-        "analyze_ms": 4478,
-        "total_ms": 5408,
-        "wall_ms": 5408
+        "analyze_ms": 4816,
+        "total_ms": 5783,
+        "wall_ms": 5783
       },
       "ok": true
     },
@@ -378,9 +387,14 @@
       "false_positives": [],
       "matching": {
         "strong_ok": true,
-        "strong": {},
+        "strong": {
+          "postgresql": "STRONG_MATCH",
+          "python": "STRONG_MATCH"
+        },
         "missing_ok": true,
-        "missing": {}
+        "missing": {
+          "docker": "MISSING"
+        }
       },
       "retrieval": {
         "fastapi": {
@@ -439,25 +453,30 @@
         }
       },
       "human_in_the_loop": {
+        "rewrite_accept": {
+          "target": "Parkezy",
+          "status": "USER_CONFIRMED",
+          "ok": true
+        },
         "accept": {
-          "target": "Authentication and secure API design",
+          "target": "Authentication and authorization",
           "status": "USER_CONFIRMED",
           "ok": true
         },
         "reject": {
-          "target": "Docker and container orchestration",
+          "target": "Docker",
           "status": "REJECTED",
           "ok": true
         },
         "edit": {
-          "target": "Microservices architecture",
+          "target": "Container orchestration",
           "status": "USER_EDITED",
           "ok": true
         }
       },
       "generation": {
         "skills": [
-          "Authentication And Secure API Design",
+          "Authentication And Authorization",
           "Python",
           "FastAPI",
           "PostgreSQL"
@@ -465,19 +484,18 @@
         "bullets": 3
       },
       "validation": {
-        "supported": 7,
-        "unsupported": 0,
+        "supported": 6,
+        "unsupported": 1,
         "needs_approval": 0
       },
       "ats": {
-        "original": 0.357,
-        "tailored": 0.293,
-        "delta": -0.064,
+        "original": 0.459,
+        "tailored": 0.391,
+        "delta": -0.068,
         "missing_skills": [
-          "Strong Python",
-          "Building REST APIs (FastAPI or similar frameworks)",
-          "PostgreSQL and relational databases",
-          "Designing backend systems and services"
+          "REST APIs (FastAPI)",
+          "Relational databases",
+          "Backend system design"
         ]
       },
       "comparison": {
@@ -493,16 +511,16 @@
           "iot",
           "max78000",
           "pandas",
-          "supabase"
+          "real-time"
         ]
       },
       "anti_hallucination": {
         "claimed_forbidden": []
       },
       "latency": {
-        "analyze_ms": 4799,
-        "total_ms": 5702,
-        "wall_ms": 5703
+        "analyze_ms": 4416,
+        "total_ms": 5628,
+        "wall_ms": 5628
       },
       "ok": true
     },
@@ -534,6 +552,11 @@
       },
       "retrieval": {},
       "human_in_the_loop": {
+        "rewrite_accept": {
+          "target": "Parkezy",
+          "status": "USER_CONFIRMED",
+          "ok": true
+        },
         "accept": {
           "target": "Web application security and the OWASP Top 10",
           "status": "USER_CONFIRMED",
@@ -563,9 +586,9 @@
         "needs_approval": 0
       },
       "ats": {
-        "original": 0.291,
-        "tailored": 0.398,
-        "delta": 0.107,
+        "original": 0.277,
+        "tailored": 0.335,
+        "delta": 0.058,
         "missing_skills": [
           "Vulnerability assessment and penetration testing",
           "Networking fundamentals and Linux",
@@ -580,12 +603,12 @@
         "skills_dropped": [
           "1d-cnn",
           "edge ai",
-          "edge impulse",
           "feature engineering",
           "git",
           "iot",
           "max78000",
           "pandas",
+          "real-time",
           "supabase"
         ]
       },
@@ -593,9 +616,9 @@
         "claimed_forbidden": []
       },
       "latency": {
-        "analyze_ms": 9450,
-        "total_ms": 12508,
-        "wall_ms": 12509
+        "analyze_ms": 9883,
+        "total_ms": 11153,
+        "wall_ms": 11153
       },
       "ok": true
     }
@@ -610,8 +633,8 @@
     "hitl_ok_all": true,
     "anti_hallucination_clean": true,
     "avg_jd_recall": 0.958,
-    "avg_ats_delta": -0.011,
-    "total_unsupported_claims": 1,
-    "avg_total_ms": 7371.75
+    "avg_ats_delta": -0.027,
+    "total_unsupported_claims": 2,
+    "avg_total_ms": 7240.25
   }
 }

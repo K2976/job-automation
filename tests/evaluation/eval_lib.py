@@ -179,8 +179,18 @@ def _fmt(d: dict) -> dict:
 def _human_in_the_loop(candidate_id: int, plan) -> dict:
     """Exercise accept / reject / edit and confirm the provenance transitions (§13).
     Runs against the isolated eval DB, so it never touches the real master profile."""
-    adds = [s for s in plan.suggestions if s.type.value == "ADD_SKILL"]
     out: dict = {}
+
+    # Accept the top project REWRITE so generation (and therefore validation/ATS below)
+    # runs on the *reframed* résumé — the product's real output, and the highest-risk
+    # content for the claim validator.
+    rewrites = [s for s in plan.suggestions if s.type.value == "REWRITE"]
+    if rewrites:
+        st = apply_approval(candidate_id, rewrites[0].id, ApprovalAction.ACCEPT)
+        out["rewrite_accept"] = {"target": rewrites[0].target, "status": st.value,
+                                 "ok": st == Status.USER_CONFIRMED}
+
+    adds = [s for s in plan.suggestions if s.type.value == "ADD_SKILL"]
     if len(adds) >= 1:
         s = adds[0]
         st = apply_approval(candidate_id, s.id, ApprovalAction.ACCEPT)
