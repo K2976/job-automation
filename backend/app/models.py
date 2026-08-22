@@ -287,3 +287,143 @@ class ATSReport(BaseModel):
     matched_keywords: list[str] = Field(default_factory=list)
     missing_skills: list[str] = Field(default_factory=list)
     potential_issues: list[str] = Field(default_factory=list)
+
+
+# =========================================================================== #
+# V2 — Opportunity Intelligence                                                #
+# =========================================================================== #
+class SourceStatus(str, Enum):
+    """Result of asking a source for opportunities in one discovery run. Anything that
+    isn't AVAILABLE means: skip the source, report it, do NOT retry (§7, §8)."""
+    AVAILABLE = "AVAILABLE"
+    BLOCKED = "BLOCKED"            # access denied / anti-bot challenge
+    CAPTCHA = "CAPTCHA"            # captcha encountered — never bypassed, just skipped
+    UNREACHABLE = "UNREACHABLE"    # network / DNS / connection failure
+    RATE_LIMITED = "RATE_LIMITED"  # 429 / throttled
+    UNSUPPORTED = "UNSUPPORTED"    # site structure we don't handle
+    ERROR = "ERROR"               # anything else
+
+
+class OpportunityStatus(str, Enum):
+    """Lifecycle (§11). V2 never sets APPLIED automatically — the user does (§28)."""
+    DISCOVERED = "DISCOVERED"
+    FILTERED = "FILTERED"              # passed hard filters, awaiting analysis
+    ANALYZED = "ANALYZED"             # V1 match/gap analysis attached
+    SHORTLISTED = "SHORTLISTED"
+    TAILORING = "TAILORING"
+    READY_TO_APPLY = "READY_TO_APPLY"
+    APPLIED = "APPLIED"               # future / manual only
+    REJECTED = "REJECTED"
+    SKIPPED = "SKIPPED"
+    EXPIRED = "EXPIRED"
+    BLOCKED = "BLOCKED"
+
+
+class SourceHealth(BaseModel):
+    source: str
+    status: SourceStatus = SourceStatus.AVAILABLE
+    discovered: int = 0
+    detail: str = ""
+
+
+class SearchPreferences(BaseModel):
+    """Candidate discovery preferences (§13). Kept small and practical."""
+    candidate_id: Optional[int] = None
+    target_roles: list[str] = Field(default_factory=list)
+    target_domains: list[str] = Field(default_factory=list)
+    preferred_locations: list[str] = Field(default_factory=list)
+    remote_preference: str = "any"        # any | remote | onsite | hybrid
+    employment_types: list[str] = Field(default_factory=list)  # e.g. internship, full-time
+    experience_level: str = ""            # e.g. internship | entry | mid
+    minimum_match_score: float = 0.0
+    technology_preferences: list[str] = Field(default_factory=list)
+    excluded_roles: list[str] = Field(default_factory=list)
+    excluded_companies: list[str] = Field(default_factory=list)
+    sources: list[str] = Field(default_factory=list)   # source names to query ([] = all enabled)
+
+
+class Opportunity(BaseModel):
+    """A potential application target (§10). Analysis fields (`requirements`, `matches`,
+    `gaps`, scores, `job_id`) are populated lazily — cheap fields at discovery, the rest
+    only for opportunities that reach deep analysis / packaging."""
+    id: Optional[int] = None
+    candidate_id: int
+    source: str = ""
+    source_id: str = ""                   # stable id within the source
+    source_url: str = ""
+    application_url: str = ""
+    dedup_key: str = ""
+    source_refs: list[str] = Field(default_factory=list)  # other sources that had this opp
+
+    company: str = ""
+    title: str = ""
+    location: str = ""
+    work_mode: str = ""                   # remote | onsite | hybrid | ""
+    employment_type: str = ""
+    salary: str = ""
+    description_raw: str = ""
+    jd_text: str = ""                     # normalized text fed to V1
+    technologies: list[str] = Field(default_factory=list)
+
+    # cheap, deterministic signals (pre-LLM)
+    cheap_score: float = 0.0
+    # deep-analysis outputs (V1 reuse) — optional until analysed
+    requirements: Optional[JDRequirements] = None
+    matches: list[RequirementMatch] = Field(default_factory=list)
+    gaps: list[GapItem] = Field(default_factory=list)
+    match_score: float = 0.0              # V1 requirement coverage
+    opportunity_score: float = 0.0        # final ranking blend
+    job_id: Optional[int] = None          # set only when a package is prepared
+
+    status: OpportunityStatus = OpportunityStatus.DISCOVERED
+    discovered_at: str = Field(default_factory=_now)
+    updated_at: str = Field(default_factory=_now)
+    closing_date: str = ""
+
+
+class BatchStatus(str, Enum):
+    PREPARATION = "PREPARATION"
+    READY = "READY"
+    ARCHIVED = "ARCHIVED"
+
+
+class ApplicationBatch(BaseModel):
+    """A controlled set of selected opportunities (§23). `max_opportunities` is a hard
+    ceiling enforced at selection time — never auto-backfilled (§24)."""
+    id: Optional[int] = None
+    candidate_id: int
+    name: str = ""
+    max_opportunities: int = 10
+    target_roles: list[str] = Field(default_factory=list)
+    filters: dict[str, Any] = Field(default_factory=dict)
+    opportunity_ids: list[int] = Field(default_factory=list)
+    status: BatchStatus = BatchStatus.PREPARATION
+    created_at: str = Field(default_factory=_now)
+
+
+class RunStatus(str, Enum):
+    RUNNING = "RUNNING"
+    COMPLETE = "COMPLETE"
+    FAILED = "FAILED"
+
+
+class DiscoveryRun(BaseModel):
+    """One discovery execution. Progress + real counts are written as it runs so the UI
+    can poll instead of holding an HTTP request open (§41). Numbers are never faked (§9)."""
+    id: Optional[int] = None
+    candidate_id: int
+    status: RunStatus = RunStatus.RUNNING
+    stage: str = ""                       # human-readable current stage
+    sources_checked: int = 0
+    sources_successful: int = 0
+    sources_skipped: int = 0
+    discovered: int = 0
+    after_filtering: int = 0
+    after_dedup: int = 0
+    deeply_analyzed: int = 0
+    shortlisted: int = 0
+    source_health: list[SourceHealth] = Field(default_factory=list)
+    opportunity_ids: list[int] = Field(default_factory=list)
+    error: str = ""
+    created_at: str = Field(default_factory=_now)
+    finished_at: str = ""

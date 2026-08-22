@@ -34,6 +34,29 @@ class Settings(BaseSettings):
 
     max_upload_bytes: int = 5 * 1024 * 1024
 
+    # --- V2 opportunity discovery ---
+    # Enabled source adapters (comma-separated). "fixtures" is offline + default so the
+    # flow works with no network/keys. Add "greenhouse,lever" once boards are configured.
+    opportunity_sources: str = "fixtures"
+    greenhouse_boards: str = ""       # comma-separated Greenhouse board tokens
+    lever_boards: str = ""            # comma-separated Lever company slugs
+    discovery_deep_top_n: int = 15    # opps that reach LLM JD analysis after cheap match
+    discovery_shortlist_n: int = 10   # opps surfaced as the shortlist after ranking
+    discovery_http_timeout: float = 15.0
+    discovery_max_pages: int = 5      # pagination cap per source (anti-runaway)
+
+    @property
+    def opportunity_source_list(self) -> list[str]:
+        return [s.strip() for s in self.opportunity_sources.split(",") if s.strip()]
+
+    @property
+    def greenhouse_board_list(self) -> list[str]:
+        return [s.strip() for s in self.greenhouse_boards.split(",") if s.strip()]
+
+    @property
+    def lever_board_list(self) -> list[str]:
+        return [s.strip() for s in self.lever_boards.split(",") if s.strip()]
+
     # Comma-separated allowed origins for the split deployment (frontend on a different
     # host than the API). "*" is fine here — there is no auth/cookies — but note CORS is
     # not a security boundary. See docs/deployment.md.

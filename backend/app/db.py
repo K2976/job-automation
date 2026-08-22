@@ -80,14 +80,57 @@ CREATE TABLE IF NOT EXISTS embedding_cache (
     vector_json TEXT NOT NULL,
     PRIMARY KEY (provider, text_hash)
 );
+
+-- V2: Opportunity Intelligence -------------------------------------------------
+-- Queryable columns for the filter/dedup/cache paths; the full Opportunity model
+-- lives in data_json (same lazy pattern as job.resume_json).
+CREATE TABLE IF NOT EXISTS opportunity (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    candidate_id INTEGER NOT NULL REFERENCES candidate(id),
+    source TEXT DEFAULT '',
+    source_id TEXT DEFAULT '',
+    dedup_key TEXT DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'DISCOVERED',
+    data_json TEXT NOT NULL,
+    created_at TEXT, updated_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_opp_candidate ON opportunity(candidate_id);
+CREATE INDEX IF NOT EXISTS idx_opp_dedup ON opportunity(candidate_id, dedup_key);
+-- Caching / re-discovery: one canonical row per (candidate, source, source_id).
+CREATE UNIQUE INDEX IF NOT EXISTS idx_opp_source
+    ON opportunity(candidate_id, source, source_id);
+
+CREATE TABLE IF NOT EXISTS search_preferences (
+    candidate_id INTEGER PRIMARY KEY REFERENCES candidate(id),
+    data_json TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS application_batch (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    candidate_id INTEGER NOT NULL REFERENCES candidate(id),
+    data_json TEXT NOT NULL,
+    created_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_batch_candidate ON application_batch(candidate_id);
+
+CREATE TABLE IF NOT EXISTS discovery_run (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    candidate_id INTEGER NOT NULL REFERENCES candidate(id),
+    data_json TEXT NOT NULL,
+    created_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_run_candidate ON discovery_run(candidate_id);
 """
 
 
 def get_conn() -> sqlite3.Connection:
     settings.db_path.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(settings.db_path)
+    conn = sqlite3.connect(settings.db_path, timeout=30)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
+    # Discovery runs in a BackgroundTask write while the UI polls-reads; wait instead of
+    # raising "database is locked". ponytail: single busy_timeout, WAL if contention grows.
+    conn.execute("PRAGMA busy_timeout = 5000")
     return conn
 
 
@@ -339,3 +382,162 @@ def set_cached_vector(provider: str, text_hash: str, vector: list[float]) -> Non
         conn.execute(
             "INSERT OR REPLACE INTO embedding_cache(provider,text_hash,vector_json) "
             "VALUES (?,?,?)", (provider, text_hash, json.dumps(vector)))
+
+
+# =========================================================================== #
+# V2 — Opportunity Intelligence                                                #
+# =========================================================================== #
+def _opp_from_row(row: sqlite3.Row):
+    from .models import Opportunity
+    opp = Opportunity.model_validate_json(row["data_json"])
+    opp.id = row["id"]
+    return opp
+
+
+def upsert_opportunity(opp) -> int:
+    """Insert, or reuse the existing canonical row for (candidate, source, source_id) so a
+    re-discovery keeps one record and its cached analysis (§30). Returns the row id.
+    Pass an existing source_id-matching opp to refresh cheap fields; analysis is preserved
+    by the caller (discovery reuses the stored opp when source_id already exists)."""
+    from .models import _now
+    opp.updated_at = _now()
+    with get_conn() as conn:
+        existing = conn.execute(
+            "SELECT id FROM opportunity WHERE candidate_id=? AND source=? AND source_id=?",
+            (opp.candidate_id, opp.source, opp.source_id)).fetchone()
+        if existing:
+            opp.id = existing["id"]
+            conn.execute(
+                "UPDATE opportunity SET dedup_key=?,status=?,data_json=?,updated_at=? "
+                "WHERE id=?",
+                (opp.dedup_key, opp.status.value, opp.model_dump_json(), opp.updated_at,
+                 opp.id))
+            return int(opp.id)
+        cur = conn.execute(
+            "INSERT INTO opportunity(candidate_id,source,source_id,dedup_key,status,"
+            "data_json,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?)",
+            (opp.candidate_id, opp.source, opp.source_id, opp.dedup_key, opp.status.value,
+             opp.model_dump_json(), opp.discovered_at, opp.updated_at))
+        return int(cur.lastrowid)
+
+
+def save_opportunity(opp) -> None:
+    """Persist changes to an existing opportunity (must have id)."""
+    from .models import _now
+    opp.updated_at = _now()
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE opportunity SET dedup_key=?,status=?,data_json=?,updated_at=? WHERE id=?",
+            (opp.dedup_key, opp.status.value, opp.model_dump_json(), opp.updated_at, opp.id))
+
+
+def get_opportunity_by_source(candidate_id: int, source: str, source_id: str):
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT * FROM opportunity WHERE candidate_id=? AND source=? AND source_id=?",
+            (candidate_id, source, source_id)).fetchone()
+    return _opp_from_row(row) if row else None
+
+
+def get_opportunity(opp_id: int):
+    with get_conn() as conn:
+        row = conn.execute("SELECT * FROM opportunity WHERE id=?", (opp_id,)).fetchone()
+    return _opp_from_row(row) if row else None
+
+
+def list_opportunities(candidate_id: int, *, statuses: Optional[Iterable[str]] = None):
+    q = "SELECT * FROM opportunity WHERE candidate_id=?"
+    params: list[Any] = [candidate_id]
+    if statuses is not None:
+        statuses = list(statuses)
+        q += f" AND status IN ({','.join('?' for _ in statuses)})"
+        params.extend(statuses)
+    q += " ORDER BY id"
+    with get_conn() as conn:
+        rows = conn.execute(q, params).fetchall()
+    return [_opp_from_row(r) for r in rows]
+
+
+# --------------------------------------------------------------- search prefs #
+def save_preferences(prefs) -> None:
+    with get_conn() as conn:
+        conn.execute(
+            "INSERT OR REPLACE INTO search_preferences(candidate_id,data_json) VALUES (?,?)",
+            (prefs.candidate_id, prefs.model_dump_json()))
+
+
+def get_preferences(candidate_id: int):
+    from .models import SearchPreferences
+    with get_conn() as conn:
+        row = conn.execute("SELECT data_json FROM search_preferences WHERE candidate_id=?",
+                           (candidate_id,)).fetchone()
+    if not row:
+        return SearchPreferences(candidate_id=candidate_id)
+    return SearchPreferences.model_validate_json(row["data_json"])
+
+
+# --------------------------------------------------------------------- batch #
+def insert_batch(batch) -> int:
+    with get_conn() as conn:
+        cur = conn.execute(
+            "INSERT INTO application_batch(candidate_id,data_json,created_at) VALUES (?,?,?)",
+            (batch.candidate_id, batch.model_dump_json(), batch.created_at))
+        return int(cur.lastrowid)
+
+
+def save_batch(batch) -> None:
+    with get_conn() as conn:
+        conn.execute("UPDATE application_batch SET data_json=? WHERE id=?",
+                     (batch.model_dump_json(), batch.id))
+
+
+def get_batch(batch_id: int):
+    from .models import ApplicationBatch
+    with get_conn() as conn:
+        row = conn.execute("SELECT * FROM application_batch WHERE id=?",
+                           (batch_id,)).fetchone()
+    if not row:
+        return None
+    b = ApplicationBatch.model_validate_json(row["data_json"])
+    b.id = row["id"]
+    return b
+
+
+def list_batches(candidate_id: int):
+    from .models import ApplicationBatch
+    with get_conn() as conn:
+        rows = conn.execute("SELECT * FROM application_batch WHERE candidate_id=? "
+                           "ORDER BY id DESC", (candidate_id,)).fetchall()
+    out = []
+    for r in rows:
+        b = ApplicationBatch.model_validate_json(r["data_json"])
+        b.id = r["id"]
+        out.append(b)
+    return out
+
+
+# ------------------------------------------------------------- discovery run #
+def insert_run(run) -> int:
+    with get_conn() as conn:
+        cur = conn.execute(
+            "INSERT INTO discovery_run(candidate_id,data_json,created_at) VALUES (?,?,?)",
+            (run.candidate_id, run.model_dump_json(), run.created_at))
+        run.id = int(cur.lastrowid)
+        return run.id
+
+
+def save_run(run) -> None:
+    with get_conn() as conn:
+        conn.execute("UPDATE discovery_run SET data_json=? WHERE id=?",
+                     (run.model_dump_json(), run.id))
+
+
+def get_run(run_id: int):
+    from .models import DiscoveryRun
+    with get_conn() as conn:
+        row = conn.execute("SELECT * FROM discovery_run WHERE id=?", (run_id,)).fetchone()
+    if not row:
+        return None
+    r = DiscoveryRun.model_validate_json(row["data_json"])
+    r.id = row["id"]
+    return r
