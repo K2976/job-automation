@@ -31,6 +31,24 @@ npm test           # vitest — component render + interaction smoke tests
 The React app is presentational: all logic goes through `src/api/client.ts` and the
 `useEngine()` hook. `types.ts` is hand-kept in sync with `backend/app/models.py`.
 
+### Design system
+Light, editorial theme defined as tokens in `src/index.css` (Tailwind v4 `@theme`): a
+single deep-teal accent, **Inter** for UI and **JetBrains Mono** for data / provenance /
+scores. Shared primitives live in `src/ui.tsx` (`Button`, `Badge`, `Meter`, `Alert`,
+`EmptyState`, `SectionHeader`, `Surface`, `icons`). Provenance is shown with text + a dot,
+never colour alone. Prefer sections + dividers + whitespace over nested cards.
+
+### Visual verification (no browser driver installed)
+`src/gallery.tsx` (served at `/gallery.html` in dev, excluded from the production bundle)
+renders the real Shell + panels with mock data so any screen can be screenshotted without a
+backend. Capture with headless Chrome and view the PNG:
+```bash
+npm run dev
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new \
+  --window-size=1280,900 --screenshot=out.png "http://localhost:5173/gallery.html?s=analysis"
+# states: start | profile | analysis | modifications | resume
+```
+
 ## Tests
 ```bash
 pytest -q          # 29 tests, no keys, no network
