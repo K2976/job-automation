@@ -9,7 +9,7 @@ from ..config import settings
 from ._http import post_json
 from .llm import LLMError, LLMProvider
 
-_DEFAULT_MODEL = "gemini-2.5-flash"
+_DEFAULT_MODEL = "gemini-3.6-flash"
 _BASE = "https://generativelanguage.googleapis.com/v1beta/models"
 
 

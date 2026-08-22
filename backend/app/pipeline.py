@@ -48,6 +48,10 @@ def analyze_job(candidate_id: int, jd_text: str, llm: LLMProvider | None = None)
 
     job_id = db.insert_job(candidate_id, jd_text, requirements.role,
                            requirements.model_dump_json())
+    # Suggestion slugs (e.g. "rewrite-parkezy") repeat across jobs; the DB id is a global
+    # PK, so job-scope it. Without this a candidate analyzing a 2nd JD collides.
+    for s in plan.suggestions:
+        s.id = f"{job_id}-{s.id}"
     db.replace_suggestions(job_id, candidate_id, plan.suggestions)
 
     return {"job_id": job_id, "requirements": requirements, "matches": matches,

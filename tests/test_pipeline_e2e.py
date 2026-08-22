@@ -36,6 +36,19 @@ def test_data_engineer_flow(candidate_id):
     assert gen["comparison"]["skills_dropped"]
 
 
+def test_second_jd_for_same_candidate_does_not_collide(candidate_id):
+    """Regression: the same candidate must be able to analyze multiple JDs. Suggestion
+    ids are job-scoped so the second analysis doesn't hit a UNIQUE constraint."""
+    de = (pipeline.FIXTURES / "jd_data_engineer.txt").read_text()
+    ai = (pipeline.FIXTURES / "jd_ai_engineer.txt").read_text()
+    r1 = pipeline.analyze_job(candidate_id, de)
+    r2 = pipeline.analyze_job(candidate_id, ai)   # must not raise
+    assert r1["job_id"] != r2["job_id"]
+    ids1 = {s.id for s in r1["plan"].suggestions}
+    ids2 = {s.id for s in r2["plan"].suggestions}
+    assert not (ids1 & ids2)                       # globally unique across jobs
+
+
 def test_ai_engineer_gives_different_view(candidate_id):
     jd = (pipeline.FIXTURES / "jd_ai_engineer.txt").read_text()
     res = pipeline.analyze_job(candidate_id, jd)
