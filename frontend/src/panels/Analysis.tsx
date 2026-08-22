@@ -1,128 +1,187 @@
 import { useState } from 'react'
 import { api } from '../api/client'
 import type { Engine } from '../store'
-import type { Explanation } from '../api/types'
-import { Badge, Button, Card, Empty } from '../ui'
+import type { MatchStatus, RequirementMatch } from '../api/types'
+import { Badge, Button, EmptyState, SectionHeader, Surface, icons } from '../ui'
 
-function Chips({ items, muted }: { items: string[]; muted?: boolean }) {
+const GROUPS: { key: MatchStatus[]; title: string; hint: string }[] = [
+  { key: ['STRONG_MATCH'], title: 'Strong matches', hint: 'Clearly evidenced in your profile.' },
+  { key: ['PARTIAL_MATCH', 'WEAK_MATCH'], title: 'Partial matches', hint: 'Related experience — worth reframing.' },
+  { key: ['USER_CONFIRMATION_REQUIRED'], title: 'Needs your confirmation', hint: 'Only include if it genuinely applies.' },
+  { key: ['MISSING'], title: 'Gaps', hint: 'No supporting evidence — not invented.' },
+]
+
+function JdInput({ engine }: { engine: Engine }) {
   return (
-    <div className="flex flex-wrap gap-1">
-      {items.map(s => (
-        <span key={s} className={`rounded px-1.5 py-0.5 text-xs ${muted ? 'bg-slate-700/40 text-slate-400' : 'bg-sky-500/10 text-sky-300'}`}>{s}</span>
-      ))}
-      {!items.length && <span className="text-xs text-slate-500">—</span>}
+    <Surface className="p-5">
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <span className="mr-1 text-[14px] text-muted">Start from a sample:</span>
+        {Object.entries(engine.sampleJds).map(([role, text]) => (
+          <Button key={role} size="sm" variant="secondary" onClick={() => engine.setJd(text)}>{role}</Button>
+        ))}
+        <label className="inline-flex h-8 cursor-pointer items-center gap-2 rounded-md border border-line-strong px-3 text-[14px] text-ink-soft hover:bg-raised sm:ml-auto">
+          <icons.upload /> Upload JD file
+          <input type="file" accept=".pdf,.docx,.txt,.md" className="hidden"
+            onChange={async e => { const f = e.target.files?.[0]; if (f) { const { text } = await api.extractJd(f); engine.setJd(text) } }} />
+        </label>
+      </div>
+      <label htmlFor="jd" className="mb-1.5 block text-[15px] font-medium text-ink">Job description</label>
+      <textarea id="jd" value={engine.jdText} onChange={e => engine.setJd(e.target.value)}
+        rows={9} placeholder="Paste the job description here…"
+        className="w-full resize-y rounded-md border border-line-strong bg-surface px-3.5 py-3 text-[15px] leading-relaxed
+          placeholder:text-faint focus:border-accent focus:outline-none" />
+      <div className="mt-3 flex items-center gap-3">
+        <Button disabled={!engine.candidate || !engine.jdText.trim()} icon={icons.arrowRight}
+          onClick={engine.analyze}>Analyze job</Button>
+        {!engine.candidate && <span className="text-[14px] text-muted">Load a candidate first.</span>}
+      </div>
+    </Surface>
+  )
+}
+
+function EvidenceChain({ m }: { m: RequirementMatch }) {
+  return (
+    <div className="space-y-4">
+      <div>
+        <div className="font-mono text-[12px] uppercase tracking-wider text-accent">Requirement</div>
+        <div className="mt-0.5 text-[17px] font-semibold text-ink">{m.requirement}</div>
+        <div className="mt-1"><Badge status={m.match_status} /></div>
+      </div>
+      <Step label="Why">
+        <p className="text-[15px] leading-relaxed text-ink-soft">{m.reason}</p>
+      </Step>
+      <Step label="Evidence" last>
+        {m.evidence.length === 0
+          ? <p className="text-[15px] text-muted">No supporting evidence in your profile.</p>
+          : <ul className="space-y-2">
+              {m.evidence.map((e, i) => (
+                <li key={i} className="rounded-md border border-line bg-paper px-3 py-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[15px] font-medium text-ink">{e.name}</span>
+                    <Badge status={e.status} subtle />
+                  </div>
+                  <div className="mt-0.5 flex items-center gap-2 text-[13px] text-muted">
+                    <span className="font-mono">{e.entity_type}</span>
+                    <span className="font-mono">· relevance {e.score}</span>
+                  </div>
+                  {e.snippet && <p className="mt-1 line-clamp-2 text-[14px] text-muted">{e.snippet}</p>}
+                </li>
+              ))}
+            </ul>}
+      </Step>
     </div>
   )
 }
 
-function JdInput({ engine }: { engine: Engine }) {
+function Step({ label, children, last }: { label: string; children: React.ReactNode; last?: boolean }) {
   return (
-    <Card title="Job description">
-      <div className="mb-2 flex flex-wrap items-center gap-2">
-        {Object.entries(engine.sampleJds).map(([role, text]) => (
-          <Button key={role} variant="ghost" onClick={() => engine.setJd(text)}>{role}</Button>
-        ))}
-        <label className="cursor-pointer rounded-md border border-slate-600 px-3 py-1.5 text-[13px] text-slate-200 hover:bg-slate-700/40">
-          Upload JD file
-          <input type="file" accept=".pdf,.docx,.txt,.md" className="hidden"
-            onChange={async e => {
-              const f = e.target.files?.[0]
-              if (f) { const { text } = await api.extractJd(f); engine.setJd(text) }
-            }} />
-        </label>
-      </div>
-      <textarea value={engine.jdText} onChange={e => engine.setJd(e.target.value)}
-        rows={8} placeholder="Paste a job description…"
-        className="w-full rounded bg-slate-900 px-2 py-2 font-mono text-xs" />
-      <div className="mt-2">
-        <Button disabled={!engine.candidate || !engine.jdText.trim()} onClick={engine.analyze}>
-          Analyze match
-        </Button>
-        {!engine.candidate && <span className="ml-2 text-xs text-slate-500">Load a candidate first.</span>}
-      </div>
-    </Card>
+    <div className="relative pl-5">
+      <span className="absolute left-0 top-1.5 h-2 w-2 rounded-full bg-accent" />
+      {!last && <span className="absolute left-[3.5px] top-4 h-[calc(100%-2px)] w-px bg-line-strong" />}
+      <div className="font-mono text-[12px] uppercase tracking-wider text-muted">{label}</div>
+      <div className="mt-1">{children}</div>
+    </div>
   )
 }
 
 export default function Analysis({ engine }: { engine: Engine }) {
-  const [exp, setExp] = useState<Explanation | null>(null)
+  const [selected, setSelected] = useState<RequirementMatch | null>(null)
   const a = engine.analysis
 
-  const explain = async (req: string) => {
-    if (!a) return
-    setExp(await api.explain(a.job_id, req))
-  }
-
   return (
-    <div className="space-y-4">
+    <div className="space-y-8">
       <JdInput engine={engine} />
-      {!a ? <Empty>Run an analysis to see matches, gaps and evidence.</Empty> : (
-        <>
-          <Card title={`Match analysis — ${a.requirements.role || 'role'}`}>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="text-left text-xs text-slate-400">
-                  <tr><th className="py-1 pr-2">Status</th><th className="pr-2">Requirement</th>
-                    <th className="pr-2">Kind</th><th className="pr-2">Score</th><th>Top evidence</th></tr>
-                </thead>
-                <tbody>
-                  {a.matches.map((m, i) => (
-                    <tr key={i} className="border-t border-slate-800">
-                      <td className="py-1.5 pr-2"><Badge status={m.match_status} /></td>
-                      <td className="pr-2">
-                        <button className="underline decoration-dotted hover:text-sky-300"
-                          onClick={() => explain(m.requirement)}>{m.requirement}</button>
-                      </td>
-                      <td className="pr-2 text-xs text-slate-400">{m.kind}</td>
-                      <td className="pr-2 text-xs text-slate-400">{m.score}</td>
-                      <td className="text-xs text-slate-400">{m.evidence[0]?.name ?? '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            {exp && (
-              <div className="mt-3 rounded-lg border border-slate-700 bg-slate-900/50 p-3 text-sm">
-                <div className="mb-1 flex items-center gap-2">
-                  <b>Why “{exp.requirement}”?</b>
-                  {exp.status && <Badge status={exp.status} />}
-                </div>
-                <div className="text-slate-300">{exp.reason}</div>
-                <div className="mt-1 text-xs text-slate-400">
-                  Evidence: {exp.evidence?.length
-                    ? exp.evidence.map(e => `${e.name} (${e.type}, ${e.score})`).join('; ')
-                    : 'none — genuine gap'}
-                </div>
-              </div>
-            )}
-          </Card>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card title="Emphasis plan">
-              <div className="mb-1 text-xs text-slate-400">Emphasize</div>
-              <Chips items={a.plan.emphasize} />
-              <div className="mb-1 mt-3 text-xs text-slate-400">De-emphasize (not JD-relevant)</div>
-              <Chips items={a.plan.deemphasize} muted />
-              <div className="mb-1 mt-3 text-xs text-slate-400">Project order</div>
-              <Chips items={a.plan.reorder} />
-            </Card>
-            <Card title={`Gaps — ${a.gaps.length}`}>
-              <div className="space-y-1">
-                {a.gaps.map((g, i) => (
-                  <div key={i} className="rounded border border-slate-800 px-2 py-1">
-                    <div className="flex items-center gap-2 text-sm">
-                      <Badge status={g.category} /><span>{g.requirement}</span>
-                    </div>
-                    <div className="text-xs text-slate-500">{g.suggested_action}</div>
-                  </div>
-                ))}
-                {!a.gaps.length && <Empty>No gaps — strong all round.</Empty>}
-              </div>
-            </Card>
+      {!a ? (
+        <EmptyState icon={icons.doc} title="No analysis yet"
+          >Paste a job description above and analyze it to see how your experience matches,
+          with the evidence behind every call.</EmptyState>
+      ) : (
+        <>
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-1 border-y border-line py-3">
+            <span className="text-[15px] font-medium text-ink">{a.requirements.role || 'Role'}</span>
+            {GROUPS.map(g => {
+              const n = a.matches.filter(m => g.key.includes(m.match_status)).length
+              return <span key={g.title} className="text-[14px] text-muted">
+                <span className="font-mono text-ink">{n}</span> {g.title.toLowerCase()}
+              </span>
+            })}
           </div>
-          <div><Button onClick={() => engine.setStep(2)}>Review modifications →</Button></div>
+
+          <div className="grid gap-8 lg:grid-cols-[1fr_400px]">
+            <div className="space-y-6">
+              {GROUPS.map(g => {
+                const items = a.matches.filter(m => g.key.includes(m.match_status))
+                if (!items.length) return null
+                return (
+                  <section key={g.title}>
+                    <div className="mb-2 flex items-baseline gap-2">
+                      <h3 className="text-[16px] font-semibold text-ink">{g.title}</h3>
+                      <span className="text-[13px] text-muted">{g.hint}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {items.map((m, i) => {
+                        const on = selected?.requirement === m.requirement
+                        return (
+                          <button key={i} onClick={() => setSelected(m)}
+                            className={`rounded-md border px-3 py-1.5 text-[14px] transition-colors
+                              ${on ? 'border-accent bg-accent-soft text-accent-ink'
+                                : 'border-line bg-surface text-ink-soft hover:border-line-strong hover:bg-raised'}`}>
+                            {m.requirement}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </section>
+                )
+              })}
+
+              {(a.plan.emphasize.length > 0 || a.plan.deemphasize.length > 0) && (
+                <section className="border-t border-line pt-5">
+                  <SectionHeader title="What we'll adjust"
+                    description="How the tailored résumé will foreground your relevant experience." />
+                  <dl className="space-y-2 text-[15px]">
+                    <Row term="Emphasize" values={a.plan.emphasize.slice(0, 10)} />
+                    <Row term="De-emphasize" values={a.plan.deemphasize.slice(0, 8)} muted />
+                    <Row term="Project order" values={a.plan.reorder} />
+                  </dl>
+                </section>
+              )}
+            </div>
+
+            <aside className="lg:sticky lg:top-4 lg:self-start">
+              <Surface className="p-5">
+                {selected
+                  ? <EvidenceChain m={selected} />
+                  : <div className="py-6 text-center">
+                      <icons.info className="mx-auto mb-2 text-[24px] text-faint" />
+                      <p className="text-[15px] text-muted">Select a requirement to see why it was
+                        classified that way and the evidence behind it.</p>
+                    </div>}
+              </Surface>
+            </aside>
+          </div>
+
+          <div className="border-t border-line pt-6">
+            <Button size="md" icon={icons.arrowRight} onClick={() => engine.setStep(2)}>
+              Review suggested changes
+            </Button>
+          </div>
         </>
       )}
+    </div>
+  )
+}
+
+function Row({ term, values, muted }: { term: string; values: string[]; muted?: boolean }) {
+  return (
+    <div className="flex flex-col gap-1 sm:flex-row sm:gap-3">
+      <dt className="w-32 shrink-0 text-[14px] text-muted">{term}</dt>
+      <dd className="flex flex-wrap gap-1.5">
+        {values.length ? values.map(v => (
+          <span key={v} className={`rounded px-2 py-0.5 text-[13px] ${muted ? 'bg-raised text-muted' : 'bg-accent-soft text-accent-ink'}`}>{v}</span>
+        )) : <span className="text-[14px] text-faint">—</span>}
+      </dd>
     </div>
   )
 }

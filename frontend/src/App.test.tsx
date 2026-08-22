@@ -22,11 +22,11 @@ function mockApi() {
 
 afterEach(() => vi.unstubAllGlobals())
 
-test('app renders the workflow shell and empty profile', () => {
+test('app renders the workflow shell and start screen', () => {
   mockApi()
   render(<App />)
   expect(screen.getByText('Adaptive Résumé Engineer')).toBeInTheDocument()
-  expect(screen.getByText('Load sample candidate')).toBeInTheDocument()
+  expect(screen.getByText('Use sample candidate')).toBeInTheDocument()
   // all four workflow steps are present
   for (const step of ['Profile', 'Analysis', 'Modifications', 'Résumé'])
     expect(screen.getByText(step)).toBeInTheDocument()
@@ -35,8 +35,7 @@ test('app renders the workflow shell and empty profile', () => {
 test('loading a candidate populates the profile', async () => {
   mockApi()
   render(<App />)
-  fireEvent.click(screen.getByText('Load sample candidate'))
-  await waitFor(() =>
-    expect(screen.getByText('Knowledge base — 0 items')).toBeInTheDocument())
+  fireEvent.click(screen.getByText('Use sample candidate'))
+  await waitFor(() => expect(screen.getByText('Knowledge base')).toBeInTheDocument())
   expect(screen.getAllByDisplayValue('Sample Candidate').length).toBeGreaterThan(0)
 })
