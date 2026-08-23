@@ -21,30 +21,42 @@ const STEPS = [
 
 type View = 'resume' | 'opportunities' | 'applications'
 const VIEWS: View[] = ['resume', 'opportunities', 'applications']
+const PATH_OF: Record<View, string> = { resume: '/', opportunities: '/opportunities', applications: '/applications' }
 
-// Real pages via the URL hash (dep-free, needs no server rewrite): #/opportunities etc.
-// Back/forward, refresh and bookmarks all work.
-function useHashView(): [View, (v: View) => void] {
+// Real pages via the History API: /opportunities, /applications, etc. Back/forward,
+// refresh and bookmarks all work as long as the host rewrites unknown paths to
+// index.html (see vercel.json) so a direct load/refresh doesn't 404.
+function usePathView(): [View, (v: View) => void] {
   const read = (): View => {
-    const h = window.location.hash.replace(/^#\/?/, '') as View
-    return VIEWS.includes(h) ? h : 'resume'
+    const seg = window.location.pathname.replace(/^\/+|\/+$/g, '') as View
+    return VIEWS.includes(seg) ? seg : 'resume'
   }
   const [view, setView] = useState<View>(read)
   useEffect(() => {
     const on = () => setView(read())
-    window.addEventListener('hashchange', on)
-    return () => window.removeEventListener('hashchange', on)
+    window.addEventListener('popstate', on)
+    return () => window.removeEventListener('popstate', on)
   }, [])
-  return [view, (v: View) => { window.location.hash = v === 'resume' ? '/' : `/${v}` }]
+  return [view, (v: View) => {
+    const path = PATH_OF[v]
+    if (window.location.pathname !== path) window.history.pushState(null, '', path)
+    setView(v)
+  }]
 }
 
 export function Shell({ engine }: { engine: ReturnType<typeof useEngine> }) {
   const { step, candidate, analysis } = engine
-  const [view, setView] = useHashView()
+  const [view, setView] = usePathView()
   const done = [!!candidate, !!analysis, !!engine.generation, false]
   const enabled = [true, !!candidate, !!analysis, !!analysis]
   const Panel = [Profile, Analysis, Modifications, Resume][step]
   const wide = step === 3 || view !== 'resume'
+
+  // Every view stays mounted once visited and is only hidden with CSS, not unmounted —
+  // switching tabs must not kill a running discovery poll or reset its state (a discovery
+  // run in progress used to vanish the instant you left the Opportunities tab).
+  const [visited, setVisited] = useState<Set<View>>(new Set([view]))
+  useEffect(() => { setVisited(v => v.has(view) ? v : new Set(v).add(view)) }, [view])
 
   return (
     <div className="min-h-full overflow-x-hidden">
@@ -53,19 +65,19 @@ export function Shell({ engine }: { engine: ReturnType<typeof useEngine> }) {
         <Stepper step={step} done={done} enabled={enabled} onGo={engine.setStep} />}
 
       <main className={`mx-auto w-full px-6 py-8 ${wide ? 'max-w-[1320px]' : 'max-w-[1120px]'}`}>
-        {view === 'resume'
-          ? <>
-            <header className="mb-7">
-              <h1 className="text-[30px] font-bold tracking-tight text-ink">{STEPS[step].title}</h1>
-              <p className="mt-1 text-[16px] text-muted">{STEPS[step].desc}</p>
-            </header>
-            {engine.busy && <div className="mb-5"><Loading label={engine.busy} /></div>}
-            {engine.error &&
-              <div className="mb-5"><Alert title="Something went wrong">{engine.error}</Alert></div>}
-            <Panel engine={engine} />
-          </>
-          : view === 'opportunities'
-          ? <>
+        <div className={view === 'resume' ? '' : 'hidden'}>
+          <header className="mb-7">
+            <h1 className="text-[30px] font-bold tracking-tight text-ink">{STEPS[step].title}</h1>
+            <p className="mt-1 text-[16px] text-muted">{STEPS[step].desc}</p>
+          </header>
+          {engine.busy && <div className="mb-5"><Loading label={engine.busy} /></div>}
+          {engine.error &&
+            <div className="mb-5"><Alert title="Something went wrong">{engine.error}</Alert></div>}
+          <Panel engine={engine} />
+        </div>
+
+        {visited.has('opportunities') &&
+          <div className={view === 'opportunities' ? '' : 'hidden'}>
             <header className="mb-7">
               <h1 className="text-[30px] font-bold tracking-tight text-ink">Opportunities</h1>
               <p className="mt-1 text-[16px] text-muted">
@@ -74,8 +86,10 @@ export function Shell({ engine }: { engine: ReturnType<typeof useEngine> }) {
               </p>
             </header>
             <Opportunities candidateId={engine.candidate?.id ?? null} />
-          </>
-          : <>
+          </div>}
+
+        {visited.has('applications') &&
+          <div className={view === 'applications' ? '' : 'hidden'}>
             <header className="mb-7">
               <h1 className="text-[30px] font-bold tracking-tight text-ink">Applications</h1>
               <p className="mt-1 text-[16px] text-muted">
@@ -84,7 +98,7 @@ export function Shell({ engine }: { engine: ReturnType<typeof useEngine> }) {
               </p>
             </header>
             <Applications candidateId={engine.candidate?.id ?? null} />
-          </>}
+          </div>}
       </main>
     </div>
   )

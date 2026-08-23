@@ -57,3 +57,12 @@ h1, h2, h3 { letter-spacing: -0.02em; }
 @media (prefers-reduced-motion: reduce) {
   * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
+
+/* bottom sheet: slides up from off-screen, used by side-panel detail views so they stay
+   fully on-screen (and reachable) in short/landscape viewports instead of a full-height
+   right-hand drawer that can overflow the visible area. */
+@keyframes sheet-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+.sheet-panel { animation: sheet-up 0.2s ease-out; }

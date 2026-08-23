@@ -327,8 +327,8 @@ function Detail({ oid, onClose, onStatus }:
   const o = data?.opportunity
   const why = data?.why_apply
   return (
-    <div className="fixed inset-0 z-30 flex justify-end bg-black/30" onClick={onClose}>
-      <div className="h-full w-full max-w-xl overflow-y-auto bg-surface p-6 shadow-xl"
+    <div className="fixed inset-0 z-30 flex items-end bg-black/30" onClick={onClose}>
+      <div className="sheet-panel h-1/2 w-full overflow-y-auto rounded-t-xl bg-surface p-6 shadow-xl"
         onClick={e => e.stopPropagation()}>
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
