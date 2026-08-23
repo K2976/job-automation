@@ -175,6 +175,11 @@ class FailIn(BaseModel):
     worker_id: str
     error_code: str = "WORKER_ERROR"
     error_message: str = ""
+    # Whatever the run got through before it crashed (mirrors CompleteIn) — without these a
+    # crash silently threw away every field the worker had already filled (§24).
+    questions: list[ApplicationQuestion] = []
+    logs: list[TaskEvent] = []
+    current_page: int = 0
 
 
 @router.post("/tasks/{task_id}/fail", dependencies=[Depends(require_worker)])
@@ -185,6 +190,9 @@ def fail_task(task_id: int, body: FailIn) -> dict:
     if task.status in (St.SUBMITTED, St.CONFIRMED, St.SUBMISSION_UNCERTAIN):
         return {"ok": True, "status": task.status.value, "note": "already terminal"}
     task.status = St.FAILED
+    task.questions = body.questions or task.questions
+    task.logs = body.logs or task.logs
+    task.current_page = body.current_page or task.current_page
     task.error_code = body.error_code
     task.error_message = body.error_message[:300]
     task.finished_at = _now()

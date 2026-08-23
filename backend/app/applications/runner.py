@@ -125,10 +125,20 @@ def run_task(task: ApplicationTask, page: BrowserPage, ctx: FillContext, *,
             task.questions.append(q)
             page_questions.append(q)
             if q.answer and not q.requires_review:
-                event = _apply(page, q)
-                task.log(event, q.name or q.question_text[:40])
-                if q.answer_source.value == "LLM_GENERATED":
-                    task.log("QUESTION_GENERATED", q.name or q.question_text[:40])
+                try:
+                    event = _apply(page, q)
+                except Exception as e:  # noqa: BLE001 — one uncooperative field (e.g. a
+                    # hidden mirror input behind a rich-text widget) must not crash the whole
+                    # task (§11); fall back to the same "ask the human" path an unmapped
+                    # field takes, instead of losing all progress made on this page.
+                    q.answer = ""
+                    q.requires_review = True
+                    q.reason = f"Could not fill this field: {type(e).__name__}."
+                    task.log("FIELD_FILL_FAILED", f"{q.name or q.question_text[:40]}: {type(e).__name__}")
+                else:
+                    task.log(event, q.name or q.question_text[:40])
+                    if q.answer_source.value == "LLM_GENERATED":
+                        task.log("QUESTION_GENERATED", q.name or q.question_text[:40])
 
         # A required question we can't safely answer stops the task (§11).
         blocking = unresolved(page_questions)

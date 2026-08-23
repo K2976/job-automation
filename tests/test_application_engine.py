@@ -128,6 +128,27 @@ def test_manual_mode_fills_but_never_submits():
     assert page.values and page.uploads       # it really filled + uploaded
 
 
+def test_field_fill_crash_stops_for_review_instead_of_failing_task():
+    """A field whose real DOM node is never actually interactable (e.g. a hidden mirror
+    <textarea> behind a rich-text widget) makes Playwright's .fill() raise. That single
+    field must not take down the whole task — it should stop cleanly for human review,
+    the same way any other unanswerable field does, keeping every question filled so far."""
+    class _CrashyPage(FakePage):
+        def fill(self, key, value):
+            if self._keys[key].get("name") == "first":
+                raise TimeoutError("ElementHandle.fill: Timeout 30000ms exceeded.")
+            super().fill(key, value)
+
+    page = _CrashyPage(_basic_form())
+    t = run_it(_task(ApprovalMode.MANUAL), page, submit=False)
+    assert t.status == St.USER_ACTION_REQUIRED
+    first_q = next(q for q in t.questions if q.name == "first")
+    assert first_q.requires_review and not first_q.answer
+    assert any(e.event == "FIELD_FILL_FAILED" for e in t.logs)
+    # the fields before the crashy one still got answered — no loss of progress
+    assert page.uploads
+
+
 def test_review_mode_stops_at_review_then_approve_submits():
     t = _task(ApprovalMode.REVIEW_BEFORE_SUBMIT)
     run_it(t, FakePage(_basic_form()), submit=False)

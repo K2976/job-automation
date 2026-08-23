@@ -136,7 +136,12 @@ def _process(client: httpx.Client, claim: dict) -> None:
         try:
             client.post(f"/worker/tasks/{task.id}/fail", json={
                 "worker_id": WORKER_ID, "error_code": "WORKER_ERROR",
-                "error_message": f"{type(e).__name__}: {e}"})
+                "error_message": f"{type(e).__name__}: {e}",
+                # Whatever run_task got through before crashing — a crash shouldn't also
+                # throw away the fields it had already filled.
+                "questions": [q.model_dump() for q in task.questions],
+                "logs": [ev.model_dump() for ev in task.logs],
+                "current_page": task.current_page})
         except Exception:  # noqa: BLE001 — API unreachable; stale recovery will catch it
             pass
     finally:

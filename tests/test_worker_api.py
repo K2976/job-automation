@@ -134,6 +134,28 @@ def test_complete_uncertain_does_not_flip_applied():
     assert opp.status.value != "APPLIED"
 
 
+# --------------------------------------------------------------- fail #
+def test_fail_preserves_progress_made_before_the_crash():
+    """A worker crash (e.g. a Playwright TimeoutError mid-fill) must not erase the fields it
+    had already filled — /fail should persist them just like /complete does, so the UI shows
+    what actually happened instead of an empty 0-questions task."""
+    cid, bid = _queued_batch(mode="MANUAL", n=1)
+    task = _claim().json()["task"]
+    r = client.post(f"/worker/tasks/{task['id']}/fail", json={
+        "worker_id": "w1", "error_code": "WORKER_ERROR",
+        "error_message": "TimeoutError: ElementHandle.fill: Timeout 30000ms exceeded.",
+        "questions": [{"field_key": "h0", "question_text": "First Name", "name": "first",
+                       "answer": "Kartik", "answer_source": "CANDIDATE_PROFILE"}],
+        "logs": [{"event": "FIELD_FILLED", "detail": "first"}],
+        "current_page": 0,
+    }, headers=H)
+    assert r.status_code == 200
+    detail = client.get(f"/api/applications/{task['id']}").json()
+    assert detail["task"]["status"] == "FAILED"
+    assert detail["summary"]["questions"] == 1
+    assert any(e["event"] == "FIELD_FILLED" for e in detail["task"]["logs"])
+
+
 def test_worker_cannot_report_applied_or_arbitrary_status():
     _queued_batch(mode="AUTONOMOUS", n=1)
     task = _claim().json()["task"]
