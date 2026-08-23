@@ -135,16 +135,19 @@ def classify(fd: FieldDescriptor, ctx: FillContext) -> ApplicationQuestion:
         try:
             ans = ctx.llm.answer_question(fd.label or fd.name, ctx.jd_text, ctx.evidence)
         except LLMError:
-            return _q(fd, requires_review=True, reason="Answer generation failed.")
+            return _q(fd, requires_review=bool(fd.required), reason="Answer generation failed.")
         # Evidence handed to the model is itself candidate-supported, so its skills count.
         allowed = ctx.supported_skills | {
             normalize_skill(s) for s in extract_skills(ctx.evidence)}
         supported = _answer_supported(ans.answer, allowed)
         needs = ans.requires_review or not ans.answer.strip() or not supported
+        # Never fabricate an unsupported/empty answer, but only BLOCK submission over it
+        # (requires_review) when the field is actually required - an optional field the
+        # model couldn't confidently answer should stay blank, not deadlock the task.
         return _q(fd, answer="" if needs else ans.answer,
                   answer_source=AnswerSource.UNRESOLVED if needs else AnswerSource.LLM_GENERATED,
                   confidence=ans.confidence,
-                  requires_review=needs,
+                  requires_review=needs and bool(fd.required),
                   reason="Generated answer not supported by evidence." if not supported
                   else ("" if not needs else "Model flagged the answer for review."))
 

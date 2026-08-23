@@ -106,6 +106,25 @@ def test_classify_semantic_answer_with_no_evidence_flags_review():
     assert q.requires_review and not q.answer
 
 
+def test_classify_optional_semantic_answer_with_no_evidence_stays_blank_not_flagged():
+    """Same no-evidence case as above but the field is optional. The answer must still stay
+    blank (never fabricate), but requires_review must be False - the fill UI only surfaces
+    *required* unresolved questions (applications_api._summary), so flagging an optional
+    field for review is a dead end nobody can clear, which used to deadlock can_submit()
+    forever (found live: Robinhood's optional "preferred pronouns" field)."""
+    q = classify(_fd("Describe your experience", "textarea", False), _ctx(evidence=""))
+    assert not q.answer and not q.requires_review
+
+
+def test_can_submit_ignores_review_flag_on_optional_fields():
+    task = _task(mode=ApprovalMode.AUTONOMOUS)
+    task.questions = [
+        classify(_fd("Email", "email", True), _ctx()),
+        classify(_fd("Describe your experience", "textarea", False), _ctx(evidence="")),
+    ]
+    assert runner.can_submit(task)
+
+
 def test_classify_unknown_required_dropdown_needs_review():
     q = classify(_fd("Team", "select", True, options=["A", "B"]), _ctx())
     assert q.requires_review

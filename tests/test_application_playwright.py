@@ -127,6 +127,18 @@ def test_high_impact_pauses(page, resume_pdf):
     assert t.status == St.USER_ACTION_REQUIRED and not runner.applied(t)
 
 
+def test_label_detected_via_aria_labelledby_and_sibling_proximity(page, resume_pdf):
+    """Real ATS forms (Greenhouse-style demographic surveys) often connect a question's
+    visible text to its input via aria-labelledby, or with no formal association at all —
+    just a preceding sibling div. Both must resolve to the real question text, not the
+    "Unlabeled text field (hN)" fallback."""
+    t = _run("unlabeled_patterns.html", page, resume_pdf, mode=ApprovalMode.MANUAL, submit=False)
+    veteran = next(q for q in t.questions if q.name == "veteran")
+    gender = next(q for q in t.questions if q.name == "gender")
+    assert veteran.question_text == "Veteran status"
+    assert gender.question_text == "Gender identity"
+
+
 def test_choice_fields_never_guessed_then_apply_correctly_once_answered(page, resume_pdf):
     """Native select/radio/checkbox are never auto-answered, even though every label here
     reads as a question ("?") — proves the _is_semantic() guard keeps them off the LLM

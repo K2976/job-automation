@@ -32,13 +32,17 @@ _CONFIRM_MARKERS = (
 def can_submit(task: ApplicationTask) -> bool:
     """The single autonomous-submit predicate (§28): every required question resolved, none
     flagged for review, and the task not blocked/awaiting a human. Evaluated once, shared by
-    every mode — there is no separate autonomous path that could skip a check."""
+    every mode — there is no separate autonomous path that could skip a check.
+
+    Only *required* questions gate submission — this must mirror the `unresolved` filter in
+    applications_api._summary(), which is what the UI actually lets a human act on. An optional
+    field flagged requires_review (e.g. a low-confidence EEO/pronoun suggestion) is invisible to
+    that UI, so gating on it here deadlocked submission forever with no way to clear it (found
+    live against Robinhood's "preferred pronouns" field)."""
     if task.status in (St.BLOCKED, St.LOGIN_REQUIRED, St.USER_ACTION_REQUIRED):
         return False
     for q in task.questions:
-        if q.requires_review:
-            return False
-        if q.required and not q.answer:
+        if q.required and (q.requires_review or not q.answer):
             return False
     return True
 

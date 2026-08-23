@@ -39,9 +39,33 @@ el => {
   const tag = el.tagName.toLowerCase();
   const type = (el.getAttribute('type') || '').toLowerCase();
   let label = el.getAttribute('aria-label') || '';
+  if (!label) {
+    // Custom-component forms (react-select, react-aria comboboxes, Greenhouse-style
+    // demographic surveys) commonly wire the visible question to the control via
+    // aria-labelledby rather than a real <label>/for pair.
+    const ids = (el.getAttribute('aria-labelledby') || '').split(/\\s+/).filter(Boolean);
+    label = ids.map(id => { const r = document.getElementById(id); return r ? r.innerText : ''; })
+               .filter(Boolean).join(' ').trim();
+  }
   if (!label && el.id) { const l = document.querySelector('label[for="' + el.id + '"]'); if (l) label = l.innerText; }
   if (!label) { const p = el.closest('label'); if (p) label = p.innerText; }
   if (!label) { const fs = el.closest('fieldset'); const lg = fs && fs.querySelector('legend'); if (lg) label = lg.innerText; }
+  if (!label) {
+    // ponytail: last resort for a field with NO formal label association at all — walk up
+    // to 4 ancestor levels looking for the nearest preceding sibling's text, the same text
+    // a human reads as "the label" even though nothing wires it to the input. Heuristic,
+    // not guaranteed correct; upgrade path is a real accessible-name algorithm if this
+    // keeps missing real questions.
+    let node = el;
+    for (let hop = 0; hop < 4 && !label && node; hop++) {
+      for (let sib = node.previousElementSibling; sib; sib = sib.previousElementSibling) {
+        if (sib.matches('input, select, textarea, button')) continue;
+        const t = (sib.innerText || '').trim();
+        if (t && t.length < 200) { label = t; break; }
+      }
+      node = node.parentElement;
+    }
+  }
   if (!label) label = el.getAttribute('placeholder') || '';
   const options = tag === 'select' ? Array.from(el.options).map(o => o.textContent.trim()) : [];
   const decoy = el.getAttribute('aria-hidden') === 'true' || getComputedStyle(el).opacity === '0';
