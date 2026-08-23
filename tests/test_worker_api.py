@@ -87,6 +87,21 @@ def test_review_mode_claim_does_not_grant_submit():
     assert _claim().json()["submit"] is False
 
 
+def test_claim_denies_submit_once_batch_cap_is_reached():
+    """max=1: once one task is SUBMITTED, a claim of the next task in the batch is granted
+    fill-only (submit=False) — the cap is enforced at claim, not just at creation (§20)."""
+    _cid, bid = _queued_batch(mode="AUTONOMOUS", n=2)   # 2 queued tasks; cap tightened below
+    # Force the batch max to 1 and mark one task SUBMITTED, so the cap is already met.
+    batch = db.get_batch(bid)
+    batch.max_opportunities = 1
+    db.save_batch(batch)
+    first = _claim("w1").json()["task"]
+    client.post(f"/worker/tasks/{first['id']}/complete",
+                json={"worker_id": "w1", "status": "SUBMITTED"}, headers=H)
+    # The second task is still QUEUED; claiming it must NOT grant submit (cap reached).
+    assert _claim("w2").json()["submit"] is False
+
+
 # --------------------------------------------------- heartbeat / liveness #
 def test_heartbeat_marks_worker_online():
     assert client.get("/api/worker/status").json()["online"] is False

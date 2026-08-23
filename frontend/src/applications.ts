@@ -4,7 +4,10 @@ import type { ApplicationBatch, ApplicationTask, ApprovalMode, Opportunity } fro
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 // Statuses that are still moving — keep polling while any task is in one of these.
-const ACTIVE = new Set(['QUEUED', 'OPENING', 'INSPECTING', 'FILLING'])
+// CLAIMED matters in remote mode: the server row sits at CLAIMED for the whole run (the
+// MacBook worker drives OPENING/FILLING on its own copy and only reports back at the end),
+// so without it the live view would freeze the instant a worker picks the task up.
+const ACTIVE = new Set(['QUEUED', 'CLAIMED', 'OPENING', 'INSPECTING', 'FILLING'])
 
 export interface AppsEngine {
   batches: ApplicationBatch[]
