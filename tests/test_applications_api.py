@@ -119,6 +119,23 @@ def test_summary_reports_answer_sources():
     assert s["can_submit"] is True
 
 
+def test_create_tasks_never_exceeds_max_even_if_selection_larger():
+    """The batch cap is normally enforced by V2 set_selection; drive queue's own [:max]
+    slice directly by writing an over-long opportunity_ids (§29/§50 — 11th impossible)."""
+    from app import db
+    from app.applications import queue
+    from app.models import ApplicationBatch
+    # Prepare TWO opportunities (both get job_id) via a batch of 2.
+    cid, _, ids, _ = _ready_batch(mode="AUTONOMOUS", n=2)
+    # A second batch whose max is 1 but whose selection lists both prepared opps.
+    over = ApplicationBatch(candidate_id=cid, name="Over", max_opportunities=1)
+    over.id = db.insert_batch(over)
+    over.opportunity_ids = ids[:2]
+    db.save_batch(over)
+    tasks = queue.create_tasks_for_batch(over.id)
+    assert len(tasks) == 1                      # capped at max, never 2
+
+
 def test_control_pause_and_cancel():
     cid, bid, ids, created = _ready_batch(mode="MANUAL", n=1)
     tid = created["tasks"][0]["id"]

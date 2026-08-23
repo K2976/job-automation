@@ -20,7 +20,10 @@ provenance (`applications/questions.py`). An LLM is spent only on genuine semant
 2. **High-impact question** → `requires_review`, `UNRESOLVED`. Salary, work authorization /
    visa, relocation, availability / start date, clearance, citizenship, demographics/EEO.
    Never auto-answered, in **any** mode (§11).
-3. **Cover letter field** → the V2-generated cover letter.
+3. **Cover letter field** → the V2-generated cover letter. If a cover letter is *required*
+   but none was prepared, the task **pauses** (`requires_review`) rather than generating one
+   mid-run — cover letters are generated once at package prep and stored (§15), never
+   repeatedly during browser interaction.
 4. **Identity/contact field** → the profile value (`field_mapper.candidate_field_values`).
    Missing-but-required → review.
 5. **Semantic free-text** (textarea, or a label like "why…", "describe…", "what makes…") →

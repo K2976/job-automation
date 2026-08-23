@@ -95,3 +95,9 @@ web service**, and do not assume a free-tier web service can host it:
   [application-automation.md](application-automation.md), [browser-agent.md](browser-agent.md)).
 - Tasks run **serially** (one Chromium context at a time) in isolated contexts; no cookies or
   credentials are persisted.
+- **Security:** the worker opens `opportunity.application_url` in a real browser, so it is an
+  outbound-navigation (SSRF-adjacent) surface. Like the rest of the app it has no built-in
+  auth, so the browser worker and its control API **must not be exposed unauthenticated** —
+  run it on a private network / behind an auth proxy. It should navigate only URLs sourced
+  from discovered opportunities, never arbitrary user input, and its debugging port must never
+  be public (§46).

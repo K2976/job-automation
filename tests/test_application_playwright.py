@@ -81,6 +81,17 @@ def test_manual_mode_reviews_not_submits(page, resume_pdf):
     assert t.status == St.REVIEW_REQUIRED and not runner.applied(t)
 
 
+def test_deterministic_values_land_in_correct_dom_fields(page, resume_pdf):
+    """The driver's key→element mapping puts each value in the RIGHT box (a first/last swap
+    or email-in-phone would submit fine and pass every status test — this is the only guard).
+    Runs in review mode so the filled form is still on screen to read back."""
+    _run("basic.html", page, resume_pdf, mode=ApprovalMode.MANUAL, submit=False)
+    assert page.page.get_by_label("First Name").input_value() == "Kartik"
+    assert page.page.get_by_label("Last Name").input_value() == "Sanghi"
+    assert page.page.get_by_label("Email").input_value() == "k@example.com"
+    assert "linkedin.com" in page.page.get_by_label("LinkedIn").input_value()
+
+
 def test_multi_page_confirms(page, resume_pdf):
     t = _run("page1.html", page, resume_pdf)
     assert t.status == St.CONFIRMED and t.current_page == 1
