@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useEngine } from './store'
 import { Alert, Loading, icons } from './ui'
 import Profile from './panels/Profile'
@@ -20,10 +20,27 @@ const STEPS = [
 ]
 
 type View = 'resume' | 'opportunities' | 'applications'
+const VIEWS: View[] = ['resume', 'opportunities', 'applications']
+
+// Real pages via the URL hash (dep-free, needs no server rewrite): #/opportunities etc.
+// Back/forward, refresh and bookmarks all work.
+function useHashView(): [View, (v: View) => void] {
+  const read = (): View => {
+    const h = window.location.hash.replace(/^#\/?/, '') as View
+    return VIEWS.includes(h) ? h : 'resume'
+  }
+  const [view, setView] = useState<View>(read)
+  useEffect(() => {
+    const on = () => setView(read())
+    window.addEventListener('hashchange', on)
+    return () => window.removeEventListener('hashchange', on)
+  }, [])
+  return [view, (v: View) => { window.location.hash = v === 'resume' ? '/' : `/${v}` }]
+}
 
 export function Shell({ engine }: { engine: ReturnType<typeof useEngine> }) {
   const { step, candidate, analysis } = engine
-  const [view, setView] = useState<View>('resume')
+  const [view, setView] = useHashView()
   const done = [!!candidate, !!analysis, !!engine.generation, false]
   const enabled = [true, !!candidate, !!analysis, !!analysis]
   const Panel = [Profile, Analysis, Modifications, Resume][step]

@@ -56,11 +56,16 @@ def _execute(run: DiscoveryRun, llm: LLMProvider) -> None:
     candidate_id = run.candidate_id
     prefs = db.get_preferences(candidate_id)
 
+    # Load every existing opp for this candidate ONCE (one query, not one-per-source-id).
+    # db opens a fresh connection per call and discovery touches ~1000 rows — against remote
+    # Postgres that was 1000 round-trips and minutes of stall; this cache-lookup map is 1 (§30).
+    existing = {(o.source, o.source_id): o for o in db.list_opportunities(candidate_id)}
+
     # 0. Retire opportunities from sources this run isn't querying (e.g. the offline
     # `fixtures` demo rows with example.com links) so they stop cluttering Results once you
     # switch to real sources. EXPIRED is terminal, so they never resurface (§14).
     enabled_names = {s.name for s in get_enabled_sources(prefs.sources or None)}
-    for stale in db.list_opportunities(candidate_id):
+    for stale in existing.values():
         if stale.source and stale.source not in enabled_names and stale.status not in _TERMINAL:
             stale.status = OpportunityStatus.EXPIRED
             db.save_opportunity(stale)
@@ -87,7 +92,7 @@ def _execute(run: DiscoveryRun, llm: LLMProvider) -> None:
     opps: list[Opportunity] = []
     for r in raw:
         opp = processing.normalize(r, candidate_id)
-        cached = db.get_opportunity_by_source(candidate_id, opp.source, opp.source_id)
+        cached = existing.get((opp.source, opp.source_id))
         if cached is not None:
             if cached.status in _TERMINAL:
                 continue  # already handled by the user — don't resurface
