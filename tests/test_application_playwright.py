@@ -27,11 +27,14 @@ CAND = Candidate(name="Kartik Sanghi", email="k@example.com", phone="+91 99999 0
 
 @pytest.fixture(scope="module")
 def _browser():
+    import os
     from playwright.sync_api import sync_playwright
     pw = None
+    # Same knob the worker image uses so these tests pass inside Docker too (§7).
+    args = os.environ.get("PLAYWRIGHT_CHROMIUM_ARGS", "").split()
     try:
         pw = sync_playwright().start()
-        browser = pw.chromium.launch(headless=True)
+        browser = pw.chromium.launch(headless=True, args=args)
     except Exception as e:  # noqa: BLE001
         if pw:
             pw.stop()

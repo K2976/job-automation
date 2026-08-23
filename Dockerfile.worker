@@ -1,0 +1,29 @@
+# Browser worker image — runs ONLY on the MacBook during a demo, never on Render (§5, §43).
+# Pinned to the project's Playwright version (1.62.0). The official image already ships
+# Python + Chromium + all OS libs, so we never install browser binaries at container start.
+FROM mcr.microsoft.com/playwright/python:v1.62.0-noble
+
+WORKDIR /app
+
+# Python deps (Playwright 1.62 is already in the base image; >=1.40 is satisfied, no upgrade).
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+
+# App code + worker client + tests (tests prove the engine works in-container, §7).
+COPY conftest.py ./
+COPY backend/ ./backend/
+COPY worker/ ./worker/
+COPY tests/ ./tests/
+
+# `import app...` resolves against backend/ (same as conftest.py does for pytest).
+ENV PYTHONPATH=/app/backend
+# The container is the isolation boundary, so Chromium runs without its own sandbox here
+# (weakening it inside an already-isolated ephemeral container is standard for Playwright/Docker).
+ENV PLAYWRIGHT_CHROMIUM_ARGS=--no-sandbox
+
+# Non-root user shipped by the Playwright image (§8 — least privilege).
+RUN chown -R pwuser:pwuser /app
+USER pwuser
+
+# No EXPOSE: the worker is an OUTBOUND client only — it never listens (§8, §13).
+CMD ["python", "-m", "worker.worker"]

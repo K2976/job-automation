@@ -140,10 +140,16 @@ class PlaywrightPage:
 @contextmanager
 def playwright_session(headless: bool = True):
     """Yield a PlaywrightPage in a fresh, isolated browser context (§6) — no cookies shared
-    between applications. Chromium is launched per session; the caller runs one task."""
+    between applications. Chromium is launched per session; the caller runs one task.
+
+    Launch args come from PLAYWRIGHT_CHROMIUM_ARGS (space-separated), default none — so the
+    host/tests keep Chromium's own sandbox on. In Docker the container is already the
+    isolation boundary, so the worker image sets `--no-sandbox` there (docs/docker-browser-worker.md)."""
+    import os
     from playwright.sync_api import sync_playwright
+    args = os.environ.get("PLAYWRIGHT_CHROMIUM_ARGS", "").split()
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=headless)
+        browser = p.chromium.launch(headless=headless, args=args)
         context = browser.new_context()
         page = context.new_page()
         try:
