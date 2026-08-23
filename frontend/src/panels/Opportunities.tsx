@@ -88,10 +88,17 @@ function Discover({ opp, onDone }: { opp: OppEngine; onDone: () => void }) {
               </select>
             </Field>
           </div>
-          <Field label="Exclude companies" hint="optional, comma-separated">
-            <input className={inputCls} defaultValue={p.excluded_companies.join(', ')}
-              onBlur={e => set({ excluded_companies: list(e.target.value) })} />
-          </Field>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Number of results" hint="how many to analyze & rank (blank = default)">
+              <input type="number" min={1} max={50} className={inputCls}
+                defaultValue={p.result_limit || ''} placeholder="10"
+                onBlur={e => set({ result_limit: Math.max(0, Math.min(50, Number(e.target.value) || 0)) })} />
+            </Field>
+            <Field label="Exclude companies" hint="optional, comma-separated">
+              <input className={inputCls} defaultValue={p.excluded_companies.join(', ')}
+                onBlur={e => set({ excluded_companies: list(e.target.value) })} />
+            </Field>
+          </div>
           <div className="pt-1">
             <Button icon={icons.arrowRight} disabled={opp.discovering}
               onClick={() => opp.discover().then(onDone)}>
@@ -119,6 +126,20 @@ function Discover({ opp, onDone }: { opp: OppEngine; onDone: () => void }) {
             <Stat label="Deeply analyzed" value={run.deeply_analyzed} />
             <Stat label="Shortlisted" value={run.shortlisted} strong />
           </dl>}
+        {run && run.source_health.some(s => s.status !== 'AVAILABLE') &&
+          <div className="mt-4 border-t border-line pt-3">
+            <div className="mb-1.5 text-[13px] font-medium text-warn">Sources skipped</div>
+            <ul className="grid gap-1 text-[13px] text-muted">
+              {run.source_health.filter(s => s.status !== 'AVAILABLE').map(s => (
+                <li key={s.source} className="flex justify-between gap-3">
+                  <span className="truncate">{s.source}</span>
+                  <span className="shrink-0 font-mono text-faint">
+                    {s.status.replace(/_/g, ' ').toLowerCase()}{s.detail ? ` · ${s.detail}` : ''}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>}
         {run?.status === 'FAILED' && <div className="mt-3"><Alert>{run.error}</Alert></div>}
       </Surface>
     </div>

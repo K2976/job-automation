@@ -8,6 +8,7 @@ export const EMPTY_PREFS: SearchPreferences = {
   target_roles: [], target_domains: [], preferred_locations: [], remote_preference: 'any',
   employment_types: [], experience_level: '', minimum_match_score: 0,
   technology_preferences: [], excluded_roles: [], excluded_companies: [], sources: [],
+  result_limit: 0,
 }
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))

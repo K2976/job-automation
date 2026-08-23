@@ -56,6 +56,15 @@ def _execute(run: DiscoveryRun, llm: LLMProvider) -> None:
     candidate_id = run.candidate_id
     prefs = db.get_preferences(candidate_id)
 
+    # 0. Retire opportunities from sources this run isn't querying (e.g. the offline
+    # `fixtures` demo rows with example.com links) so they stop cluttering Results once you
+    # switch to real sources. EXPIRED is terminal, so they never resurface (§14).
+    enabled_names = {s.name for s in get_enabled_sources(prefs.sources or None)}
+    for stale in db.list_opportunities(candidate_id):
+        if stale.source and stale.source not in enabled_names and stale.status not in _TERMINAL:
+            stale.status = OpportunityStatus.EXPIRED
+            db.save_opportunity(stale)
+
     # 1. Collect (error-isolated per source) -----------------------------------
     run.stage = "Checking sources"
     db.save_run(run)
@@ -114,7 +123,14 @@ def _execute(run: DiscoveryRun, llm: LLMProvider) -> None:
         if o.status == OpportunityStatus.DISCOVERED:
             o.status = OpportunityStatus.FILTERED
     deduped.sort(key=lambda o: o.cheap_score, reverse=True)
-    top = deduped[: settings.discovery_deep_top_n]
+    # The user-requested result count (Discover form) sizes the shortlist, clamped to a hard
+    # cap; we still deep-analyse at least deep_top_n so the shortlist is chosen from a real
+    # ranked pool. Each analysed opp is one LLM call (§8, §41). 0 ⇒ server default.
+    shortlist_size = settings.discovery_shortlist_n
+    if prefs.result_limit and prefs.result_limit > 0:
+        shortlist_size = min(prefs.result_limit, settings.discovery_max_result_limit)
+    deep_n = max(settings.discovery_deep_top_n, shortlist_size)
+    top = deduped[:deep_n]
     run.stage = "Matching against your profile"
     db.save_run(run)
 
@@ -147,7 +163,7 @@ def _execute(run: DiscoveryRun, llm: LLMProvider) -> None:
     # The shortlist is the top-ranked slice surfaced as this run's results. Opportunities
     # analysed beyond it stay ANALYZED and remain in the full list, but the run points only
     # at the shortlist — so `shortlisted` always equals len(opportunity_ids) (honest count).
-    shortlist = analyzed[: settings.discovery_shortlist_n]
+    shortlist = analyzed[:shortlist_size]
     run.shortlisted = len(shortlist)
     run.opportunity_ids = [o.id for o in shortlist]  # results, best-first
 

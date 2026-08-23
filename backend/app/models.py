@@ -340,6 +340,7 @@ class SearchPreferences(BaseModel):
     excluded_roles: list[str] = Field(default_factory=list)
     excluded_companies: list[str] = Field(default_factory=list)
     sources: list[str] = Field(default_factory=list)   # source names to query ([] = all enabled)
+    result_limit: int = 0   # how many results to analyse+shortlist this run (0 = server default)
 
 
 class Opportunity(BaseModel):

@@ -48,13 +48,18 @@ class Settings(BaseSettings):
     worker_stale_grace: float = 60.0
 
     # --- V2 opportunity discovery ---
-    # Enabled source adapters (comma-separated). "fixtures" is offline + default so the
-    # flow works with no network/keys. Add "greenhouse,lever" once boards are configured.
-    opportunity_sources: str = "fixtures"
-    greenhouse_boards: str = ""       # comma-separated Greenhouse board tokens
-    lever_boards: str = ""            # comma-separated Lever company slugs
+    # Enabled source adapters (comma-separated). Greenhouse + Lever are official no-auth
+    # JSON feeds (real live jobs); "fixtures" is the offline demo source (used by tests and
+    # available for no-network runs, but not on by default so results are real, not example.com).
+    opportunity_sources: str = "greenhouse,lever"
+    # Verified public board tokens (curl-checked to return jobs). Mid-size boards so a run
+    # stays responsive (~hundreds of postings); add big boards (databricks, coinbase,
+    # anthropic, stripe…) via GREENHOUSE_BOARDS env if you want a wider sweep.
+    greenhouse_boards: str = "figma,discord,robinhood,dropbox,airbnb"
+    lever_boards: str = "palantir,spotify"   # comma-separated Lever company slugs
     discovery_deep_top_n: int = 15    # opps that reach LLM JD analysis after cheap match
     discovery_shortlist_n: int = 10   # opps surfaced as the shortlist after ranking
+    discovery_max_result_limit: int = 50  # hard cap on a per-run requested result count
     discovery_http_timeout: float = 15.0
     discovery_max_pages: int = 5      # pagination cap per source (anti-runaway)
 

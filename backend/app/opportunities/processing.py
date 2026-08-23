@@ -82,6 +82,24 @@ def _matches_any(text: str, terms: list[str]) -> bool:
     return any(_key_part(t) and _key_part(t) in low for t in terms)
 
 
+# Seniority/filler words that would over-broaden a role token match if kept.
+_ROLE_STOP = {"intern", "internship", "senior", "sr", "junior", "jr", "entry", "level",
+              "staff", "lead", "principal", "i", "ii", "iii", "the", "and", "of", "a"}
+
+
+def _title_matches_roles(title: str, roles: list[str]) -> bool:
+    """Role is a *breadth* filter, not an exact-title gate: keep an opp if ANY meaningful
+    token of ANY target role appears as a whole word in the title. So "AI Engineer" keeps
+    "Data Engineer" / "ML Engineer Intern" (fit is then decided by ranking), while still
+    dropping unrelated titles. Full-phrase match still earns the ranking bonus (§18)."""
+    tokens = {t for r in roles for t in _key_part(r).split()
+              if len(t) >= 2 and t not in _ROLE_STOP}
+    if not tokens:
+        return True
+    words = set(_key_part(title).split())
+    return bool(tokens & words)
+
+
 def passes_filters(opp: Opportunity, prefs: SearchPreferences) -> tuple[bool, str]:
     """Cheap hard filters (§14). Returns (kept, reason_if_dropped). Unknown fields on the
     opportunity are treated as 'not disqualifying' — we never drop on missing data."""
@@ -91,7 +109,7 @@ def passes_filters(opp: Opportunity, prefs: SearchPreferences) -> tuple[bool, st
         return False, "excluded company"
     if prefs.excluded_roles and _matches_any(opp.title, prefs.excluded_roles):
         return False, "excluded role"
-    if prefs.target_roles and not _matches_any(opp.title, prefs.target_roles):
+    if prefs.target_roles and not _title_matches_roles(opp.title, prefs.target_roles):
         return False, "role does not match target roles"
 
     exp = prefs.experience_level.lower()

@@ -122,6 +122,7 @@ export interface SearchPreferences {
   remote_preference: string; employment_types: string[]; experience_level: string
   minimum_match_score: number; technology_preferences: string[]
   excluded_roles: string[]; excluded_companies: string[]; sources: string[]
+  result_limit: number
 }
 
 export interface Opportunity {
