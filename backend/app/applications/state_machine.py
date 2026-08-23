@@ -8,7 +8,13 @@ from ..models import ApplicationStatus as S
 # Legal transitions. Read as: from → {allowed next states}.
 _LEGAL: dict[S, set[S]] = {
     S.READY: {S.QUEUED, S.PAUSED, S.CANCELLED},
-    S.QUEUED: {S.OPENING, S.PAUSED, S.CANCELLED},
+    S.QUEUED: {S.OPENING, S.CLAIMED, S.PAUSED, S.CANCELLED},
+    # A remote worker claims a QUEUED task, then reports one terminal/pause outcome (its
+    # local runner drove OPENING→…→final on its own copy). Stale recovery sends it back to
+    # QUEUED, or to SUBMISSION_UNCERTAIN if a submit was granted (§15, §18).
+    S.CLAIMED: {S.REVIEW_REQUIRED, S.USER_ACTION_REQUIRED, S.LOGIN_REQUIRED, S.BLOCKED,
+                S.FAILED, S.SUBMITTED, S.CONFIRMED, S.SUBMISSION_UNCERTAIN,
+                S.QUEUED, S.CANCELLED},
     S.PAUSED: {S.QUEUED, S.CANCELLED},
     S.OPENING: {S.INSPECTING, S.BLOCKED, S.LOGIN_REQUIRED, S.FAILED},
     S.INSPECTING: {S.FILLING, S.BLOCKED, S.LOGIN_REQUIRED, S.FAILED},
@@ -20,7 +26,8 @@ _LEGAL: dict[S, set[S]] = {
         S.SUBMITTED, S.SUBMISSION_UNCERTAIN,  # autonomous submit outcomes
     },
     S.REVIEW_REQUIRED: {S.SUBMITTED, S.SUBMISSION_UNCERTAIN, S.FAILED, S.CANCELLED,
-                        S.FILLING},
+                        S.FILLING, S.QUEUED},   # QUEUED: approved task re-queued for a worker
+
     S.USER_ACTION_REQUIRED: {S.QUEUED, S.FILLING, S.CANCELLED, S.FAILED},
     S.LOGIN_REQUIRED: {S.QUEUED, S.FILLING, S.CANCELLED, S.FAILED},
     S.BLOCKED: {S.CANCELLED, S.QUEUED},      # a retry re-queues; automation never bypasses

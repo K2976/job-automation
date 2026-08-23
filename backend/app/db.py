@@ -136,6 +136,15 @@ CREATE TABLE IF NOT EXISTS application_task (
 CREATE UNIQUE INDEX IF NOT EXISTS idx_task_opp ON application_task(opportunity_id);
 CREATE INDEX IF NOT EXISTS idx_task_batch ON application_task(batch_id);
 CREATE INDEX IF NOT EXISTS idx_task_candidate ON application_task(candidate_id);
+
+-- V3.5: remote browser-worker registry. One row per worker; liveness for the online/offline
+-- badge (§17) and for detecting stale claims independent of any single task (§18).
+CREATE TABLE IF NOT EXISTS worker (
+    worker_id TEXT PRIMARY KEY,
+    status TEXT NOT NULL DEFAULT 'idle',
+    current_task_id INTEGER,
+    last_seen TEXT NOT NULL
+);
 """
 
 
@@ -629,3 +638,119 @@ def count_submitted_tasks(batch_id: int) -> int:
         rows = conn.execute(
             "SELECT status FROM application_task WHERE batch_id=?", (batch_id,)).fetchall()
     return sum(1 for r in rows if r["status"] in ("SUBMITTED", "CONFIRMED"))
+
+
+# ------------------------------------------------- V3.5 remote worker channel #
+def _age_seconds(ts: str) -> float:
+    """Seconds since an ISO-8601 timestamp; +inf if missing/unparseable (treat as stale)."""
+    from datetime import datetime, timezone
+    if not ts:
+        return float("inf")
+    try:
+        return (datetime.now(timezone.utc) - datetime.fromisoformat(ts)).total_seconds()
+    except ValueError:
+        return float("inf")
+
+
+def claim_next_task(worker_id: str, *, heartbeat_timeout: float, stale_grace: float):
+    """Atomically hand the oldest QUEUED task to one worker (§15). BEGIN IMMEDIATE takes the
+    write lock up front so two racing workers serialize — the loser sees no QUEUED row and
+    gets nothing. Recovers stale claims first so a crashed worker's work isn't stranded (§18).
+    Returns (task, submit) or (None, False). `submit` is the effective, cap-checked decision."""
+    from .models import ApplicationStatus as St, _now
+    recover_stale_tasks(heartbeat_timeout=heartbeat_timeout, stale_grace=stale_grace)
+    conn = get_conn()
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+        row = conn.execute(
+            "SELECT * FROM application_task WHERE status='QUEUED' ORDER BY id LIMIT 1"
+        ).fetchone()
+        if row is None:
+            conn.execute("COMMIT")
+            return None, False
+        task = _task_from_row(row)
+        # Effective submit decision, evaluated once here and gated by the batch cap (§20).
+        from .models import ApprovalMode
+        want = task.submit_approved or task.approval_mode == ApprovalMode.AUTONOMOUS
+        under_cap = True
+        if want and task.batch_id is not None:
+            b = conn.execute("SELECT data_json FROM application_batch WHERE id=?",
+                             (task.batch_id,)).fetchone()
+            if b is not None:
+                from .models import ApplicationBatch
+                batch = ApplicationBatch.model_validate_json(b["data_json"])
+                done = sum(1 for r in conn.execute(
+                    "SELECT status FROM application_task WHERE batch_id=?", (task.batch_id,))
+                    if r["status"] in ("SUBMITTED", "CONFIRMED"))
+                under_cap = done < batch.max_opportunities
+        submit = bool(want and under_cap)
+        task.status = St.CLAIMED
+        task.worker_id = worker_id
+        task.claimed_at = _now()
+        task.submit_granted = submit
+        conn.execute(
+            "UPDATE application_task SET status=?,data_json=?,updated_at=? WHERE id=?",
+            (task.status.value, task.model_dump_json(), _now(), task.id))
+        conn.execute("COMMIT")
+        return task, submit
+    except Exception:
+        conn.execute("ROLLBACK")
+        raise
+    finally:
+        conn.close()
+
+
+def recover_stale_tasks(*, heartbeat_timeout: float, stale_grace: float) -> int:
+    """Re-queue (or flag) tasks whose worker died mid-run (§18). A CLAIMED task is stale when
+    its claim is older than the grace period AND its worker's heartbeat has expired. If a
+    submit was granted the outcome is uncertain → SUBMISSION_UNCERTAIN + review, never an
+    automatic re-queue that could double-submit (§18, §19). Returns how many were recovered."""
+    from .models import ApplicationStatus as St, _now
+    with get_conn() as conn:
+        seen = {r["worker_id"]: r["last_seen"]
+                for r in conn.execute("SELECT worker_id,last_seen FROM worker")}
+        rows = conn.execute(
+            "SELECT * FROM application_task WHERE status='CLAIMED'").fetchall()
+        recovered = 0
+        for row in rows:
+            task = _task_from_row(row)
+            if _age_seconds(task.claimed_at) < stale_grace:
+                continue                                   # give a fresh claim time to start
+            if _age_seconds(seen.get(task.worker_id, "")) < heartbeat_timeout:
+                continue                                   # worker still alive
+            if task.submit_granted:
+                task.status = St.SUBMISSION_UNCERTAIN
+                task.error_code = "WORKER_LOST"
+                task.log("SUBMISSION_UNCERTAIN", "worker lost after submit was granted")
+            else:
+                task.status = St.QUEUED
+                task.worker_id = ""
+                task.log("REQUEUED", "worker lost before submit; safe to re-run")
+            conn.execute(
+                "UPDATE application_task SET status=?,data_json=?,updated_at=? WHERE id=?",
+                (task.status.value, task.model_dump_json(), _now(), task.id))
+            recovered += 1
+    return recovered
+
+
+def upsert_worker(worker_id: str, *, status: str, current_task_id: int | None) -> None:
+    from .models import _now
+    with get_conn() as conn:
+        conn.execute(
+            "INSERT INTO worker(worker_id,status,current_task_id,last_seen) VALUES (?,?,?,?) "
+            "ON CONFLICT(worker_id) DO UPDATE SET status=excluded.status,"
+            "current_task_id=excluded.current_task_id,last_seen=excluded.last_seen",
+            (worker_id, status, current_task_id, _now()))
+
+
+def list_workers() -> list["WorkerStatus"]:  # type: ignore[name-defined]  # noqa: F821
+    from .models import WorkerStatus
+    with get_conn() as conn:
+        rows = conn.execute("SELECT * FROM worker ORDER BY last_seen DESC").fetchall()
+    return [WorkerStatus(worker_id=r["worker_id"], status=r["status"],
+                         current_task_id=r["current_task_id"], last_seen=r["last_seen"])
+            for r in rows]
+
+
+def any_worker_online(timeout: float) -> bool:
+    return any(_age_seconds(w.last_seen) < timeout for w in list_workers())

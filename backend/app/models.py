@@ -448,6 +448,7 @@ class ApplicationStatus(str, Enum):
     """Application task lifecycle (§8). Transitions are constrained in state_machine.py."""
     READY = "READY"
     QUEUED = "QUEUED"
+    CLAIMED = "CLAIMED"                       # a remote worker owns it and is driving it (§15)
     PAUSED = "PAUSED"
     OPENING = "OPENING"
     INSPECTING = "INSPECTING"
@@ -553,6 +554,14 @@ class ApplicationTask(BaseModel):
     confirmation_reference: str = ""
     retry_count: int = 0
 
+    # --- remote worker ownership (§15, §18) ---
+    worker_id: str = ""                      # the worker that claimed this task, if any
+    claimed_at: str = ""                     # when it was claimed (drives stale recovery)
+    submit_approved: bool = False            # a REVIEW task the user approved for submit (§28)
+    submit_granted: bool = False             # effective submit decision at claim; if a
+                                             # granted task goes stale it's SUBMISSION_UNCERTAIN,
+                                             # never blindly re-queued (§18)
+
     created_at: str = Field(default_factory=_now)
     started_at: str = ""
     finished_at: str = ""
@@ -560,3 +569,34 @@ class ApplicationTask(BaseModel):
 
     def log(self, event: str, detail: str = "") -> None:
         self.logs.append(TaskEvent(event=event, detail=detail))
+
+
+# Statuses the remote worker is allowed to report back via /worker/tasks/{id}/complete.
+# It can never write APPLIED (that's derived server-side, §30) or arbitrary states.
+WORKER_REPORTABLE_STATUSES = {
+    ApplicationStatus.REVIEW_REQUIRED, ApplicationStatus.USER_ACTION_REQUIRED,
+    ApplicationStatus.LOGIN_REQUIRED, ApplicationStatus.BLOCKED, ApplicationStatus.FAILED,
+    ApplicationStatus.SUBMITTED, ApplicationStatus.CONFIRMED,
+    ApplicationStatus.SUBMISSION_UNCERTAIN,
+}
+
+
+class FillContextBundle(BaseModel):
+    """The serializable half of a task's fill context (§12, trap #1). Sent to the remote
+    worker at claim time — everything except the résumé (a `resume_url` the worker downloads)
+    and the LLM (the worker calls back to /worker/llm so provider keys stay centralized, §28)."""
+    candidate_values: dict[str, str] = Field(default_factory=dict)
+    evidence: str = ""
+    jd_text: str = ""
+    supported_skills: list[str] = Field(default_factory=list)
+    cover_letter: str = ""
+    role: str = ""
+    resume_url: str = ""                      # relative API path, or "" if no package résumé
+
+
+class WorkerStatus(BaseModel):
+    """A registered worker's liveness (§17), for the frontend online/offline badge."""
+    worker_id: str
+    status: str = "idle"                      # idle | busy
+    current_task_id: Optional[int] = None
+    last_seen: str = ""

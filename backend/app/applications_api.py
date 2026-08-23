@@ -10,6 +10,7 @@ from . import db
 from .applications import queue
 from .applications.runner import can_submit
 from .applications.state_machine import IllegalTransition, transition
+from .config import settings
 from .models import (
     AnswerSource,
     ApplicationStatus as St,
@@ -19,6 +20,22 @@ from .models import (
 
 router = APIRouter(prefix="/api", tags=["applications"])
 MAX_RETRIES = 2
+
+
+def _dispatch(task: ApplicationTask, background: BackgroundTasks, *, submit: bool) -> bool:
+    """Start a task. Inline (dev/tests): run the browser in-process via a BackgroundTask.
+    Remote (Render, INLINE_APPLICATIONS=false): only enqueue → QUEUED so the MacBook worker
+    claims it — the API service never launches Chromium (§5). Returns whether it will submit."""
+    if settings.inline_applications:
+        background.add_task(queue.execute, task.id, submit=submit)
+        return submit
+    # Remote: mark it claimable. submit_approved carries an approved-review intent to claim.
+    if submit and task.approval_mode == ApprovalMode.REVIEW_BEFORE_SUBMIT:
+        task.submit_approved = True
+    if task.status != St.QUEUED:
+        transition(task, St.QUEUED)
+    db.save_task(task)
+    return submit
 
 
 def _task_or_404(task_id: int) -> ApplicationTask:
@@ -93,16 +110,29 @@ def application_summary(task_id: int) -> dict:
 def start_application(task_id: int, background: BackgroundTasks) -> dict:
     task = _task_or_404(task_id)
     submit = task.approval_mode == ApprovalMode.AUTONOMOUS
-    background.add_task(queue.execute, task_id, submit=submit)
-    return {"task_id": task_id, "started": True, "will_submit": submit}
+    will_submit = _dispatch(task, background, submit=submit)
+    return {"task_id": task_id, "started": True, "will_submit": will_submit,
+            "queued": not settings.inline_applications}
 
 
 @router.post("/batches/{batch_id}/applications/start")
 def start_batch(batch_id: int, background: BackgroundTasks) -> dict:
     if db.get_batch(batch_id) is None:
         raise HTTPException(404, "batch not found")
-    background.add_task(queue.execute_batch, batch_id)
-    return {"batch_id": batch_id, "started": True}
+    if settings.inline_applications:
+        background.add_task(queue.execute_batch, batch_id)
+        return {"batch_id": batch_id, "started": True}
+    # Remote: enqueue every runnable task; the MacBook worker drains the queue serially (§16).
+    from .models import TERMINAL_STATUSES
+    queued = 0
+    for task in db.list_tasks(batch_id=batch_id):
+        if task.status in TERMINAL_STATUSES or task.status in (St.PAUSED, St.CANCELLED,
+                                                               St.CLAIMED, St.QUEUED):
+            continue
+        submit = task.approval_mode == ApprovalMode.AUTONOMOUS
+        _dispatch(task, background, submit=submit)
+        queued += 1
+    return {"batch_id": batch_id, "started": True, "queued": queued}
 
 
 @router.post("/applications/{task_id}/approve")
@@ -114,8 +144,9 @@ def approve_application(task_id: int, background: BackgroundTasks) -> dict:
         raise HTTPException(409, "only REVIEW_BEFORE_SUBMIT tasks can be approved for submit")
     if task.status != St.REVIEW_REQUIRED:
         raise HTTPException(409, f"task is {task.status.value}, not REVIEW_REQUIRED")
-    background.add_task(queue.execute, task_id, submit=True)
-    return {"task_id": task_id, "submitting": True}
+    _dispatch(task, background, submit=True)
+    return {"task_id": task_id, "submitting": True,
+            "queued": not settings.inline_applications}
 
 
 class AnswersIn(BaseModel):
@@ -168,8 +199,9 @@ def control(task_id: int, body: ActionIn, background: BackgroundTasks) -> dict:
             task.retry_count += 1
             db.save_task(task)
             submit = task.approval_mode == ApprovalMode.AUTONOMOUS
-            background.add_task(queue.execute, task_id, submit=submit)
-            return {"task_id": task_id, "retrying": True, "retry_count": task.retry_count}
+            _dispatch(task, background, submit=submit)
+            return {"task_id": task_id, "retrying": True, "retry_count": task.retry_count,
+                    "queued": not settings.inline_applications}
         else:
             raise HTTPException(400, f"unknown action {act!r}")
     except IllegalTransition as e:

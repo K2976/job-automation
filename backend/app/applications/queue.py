@@ -94,6 +94,24 @@ def _render_resume_pdf(job_id: int) -> str:
     return path
 
 
+def build_context_bundle(task: ApplicationTask):
+    """The serializable fill context for the remote worker (trap #1): everything except the
+    résumé bytes (a `resume_url` the worker downloads) and the LLM (worker calls back). No
+    Chromium, no temp files — safe to run in the API web service."""
+    from ..models import FillContextBundle
+    opp = db.get_opportunity(task.opportunity_id)
+    candidate = db.get_candidate(task.candidate_id)
+    entities = db.get_entities(task.candidate_id, statuses=SUPPORTED_STATUSES)
+    has_resume = bool(opp.job_id and db.get_generation(opp.job_id))
+    return FillContextBundle(
+        candidate_values=fm.candidate_field_values(candidate),
+        evidence=_evidence(opp), jd_text=opp.jd_text,
+        supported_skills=sorted(matching.candidate_skill_set(entities)),
+        cover_letter=opp.cover_letter,
+        role=(opp.requirements.role if opp.requirements else opp.title),
+        resume_url=f"/worker/tasks/{task.id}/resume.pdf" if has_resume else "")
+
+
 def build_context(task: ApplicationTask, llm=None) -> FillContext:
     llm = llm or get_llm_provider()
     opp = db.get_opportunity(task.opportunity_id)

@@ -55,6 +55,10 @@ app.include_router(opportunities_router)
 from .applications_api import router as applications_router  # noqa: E402
 app.include_router(applications_router)
 
+# V3.5 — remote browser-worker channel (token-guarded; the MacBook worker calls in).
+from .worker_api import router as worker_router  # noqa: E402
+app.include_router(worker_router)
+
 
 # ------------------------------------------------------------------ requests #
 class JobIn(BaseModel):
@@ -86,6 +90,23 @@ class EntityCreateIn(BaseModel):
 def health() -> dict:
     return {"status": "ok", "llm_provider": settings.llm_provider,
             "embedding_provider": settings.embedding_provider}
+
+
+@app.get("/api/worker/status")
+def worker_status() -> dict:
+    """Public (no worker token) liveness for the frontend badge (§17, §32). Sweeps stale
+    claims on read so a crashed worker's tasks recover without a separate scheduler (§18).
+    Returns no secrets — just worker ids and last-seen."""
+    db.recover_stale_tasks(heartbeat_timeout=settings.worker_heartbeat_timeout,
+                           stale_grace=settings.worker_stale_grace)
+    workers = db.list_workers()
+    online = db.any_worker_online(settings.worker_heartbeat_timeout)
+    return {
+        "online": online,
+        "inline": settings.inline_applications,
+        "heartbeat_timeout": settings.worker_heartbeat_timeout,
+        "workers": [w.model_dump() for w in workers],
+    }
 
 
 @app.get("/api/fixtures/jds")

@@ -34,6 +34,19 @@ class Settings(BaseSettings):
 
     max_upload_bytes: int = 5 * 1024 * 1024
 
+    # --- V3.5 remote browser worker (§13-§18) ---
+    # Shared secret the MacBook worker presents. Empty ⇒ the whole /worker channel is
+    # refused (fail closed) — never accidentally open. Set on Render, in the worker env.
+    worker_auth_token: str = ""
+    # True: /start runs the browser in-process (dev + the whole test suite, unchanged).
+    # False: /start only enqueues (→QUEUED); the remote MacBook worker executes it. Render
+    # sets INLINE_APPLICATIONS=false so the API service never launches Chromium (§5).
+    inline_applications: bool = True
+    # A worker (and any task it holds) is considered offline/stale after this many seconds
+    # with no heartbeat; a claim must be at least `worker_stale_grace` old to be recovered.
+    worker_heartbeat_timeout: float = 45.0
+    worker_stale_grace: float = 60.0
+
     # --- V2 opportunity discovery ---
     # Enabled source adapters (comma-separated). "fixtures" is offline + default so the
     # flow works with no network/keys. Add "greenhouse,lever" once boards are configured.
