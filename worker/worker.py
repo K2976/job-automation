@@ -14,6 +14,7 @@ import signal
 import socket
 import sys
 import tempfile
+import threading
 import time
 
 import httpx
@@ -35,6 +36,9 @@ TOKEN = _env("WORKER_AUTH_TOKEN")
 WORKER_ID = _env("WORKER_ID") or f"mac-{socket.gethostname()}"
 POLL_SECONDS = float(_env("WORKER_POLL_SECONDS", "5"))
 IDLE_MAX_SECONDS = float(_env("WORKER_IDLE_MAX_SECONDS", "30"))
+# Ping the task's heartbeat while a run is in progress — must stay under the server's
+# WORKER_HEARTBEAT_TIMEOUT (45s) so a multi-minute application isn't falsely recovered (§18).
+HEARTBEAT_SECONDS = float(_env("WORKER_HEARTBEAT_SECONDS", "15"))
 HEADLESS = _env("WORKER_HEADLESS", "true").lower() != "false"
 
 _stop = False
@@ -77,6 +81,24 @@ def _download_resume(client: httpx.Client, url: str) -> str:
     return path
 
 
+def _heartbeat_thread(client: httpx.Client, task_id: int) -> tuple[threading.Thread, threading.Event]:
+    """Keep the claim fresh while the (blocking, sync) run is in progress, so it isn't
+    recovered as stale mid-application (§18). Stops on the returned Event."""
+    stop = threading.Event()
+
+    def loop():
+        while not stop.wait(HEARTBEAT_SECONDS):
+            try:
+                client.post(f"/worker/tasks/{task_id}/heartbeat",
+                            json={"worker_id": WORKER_ID})
+            except Exception:  # noqa: BLE001 — a missed ping is not fatal
+                pass
+
+    t = threading.Thread(target=loop, daemon=True)
+    t.start()
+    return t, stop
+
+
 def _process(client: httpx.Client, claim: dict) -> None:
     task = ApplicationTask.model_validate(claim["task"])
     ctx_data = claim["context"]
@@ -84,6 +106,7 @@ def _process(client: httpx.Client, claim: dict) -> None:
     print(f"[worker] claimed task {task.id} (submit={submit})", flush=True)
 
     resume_path = ""
+    hb_thread, hb_stop = _heartbeat_thread(client, task.id)
     try:
         if ctx_data.get("resume_url"):
             resume_path = _download_resume(client, ctx_data["resume_url"])
@@ -117,6 +140,8 @@ def _process(client: httpx.Client, claim: dict) -> None:
         except Exception:  # noqa: BLE001 — API unreachable; stale recovery will catch it
             pass
     finally:
+        hb_stop.set()
+        hb_thread.join(timeout=2)
         if resume_path and os.path.exists(resume_path):
             os.remove(resume_path)             # never leave résumé PDFs on the Mac (§8)
 
