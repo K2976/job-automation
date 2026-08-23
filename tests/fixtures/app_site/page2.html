@@ -1,0 +1,11 @@
+<!doctype html><meta charset="utf-8"><title>Apply — Page 2</title>
+<h1>Apply: step 2 of 2</h1>
+<form id="f">
+  <label>Phone <input name="phone" type="tel"></label><br>
+  <label>Resume <input name="resume" type="file" required></label><br>
+  <button type="submit">Send application</button>
+</form>
+<div id="done" hidden>Thanks for applying! Your application has been submitted.</div>
+<script>
+  f.onsubmit = e => { e.preventDefault(); f.hidden = true; done.hidden = false; };
+</script>

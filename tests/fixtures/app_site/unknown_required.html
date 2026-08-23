@@ -1,0 +1,9 @@
+<!doctype html><meta charset="utf-8"><title>Apply — Unknown field</title>
+<h1>Apply: Backend Engineer</h1>
+<form id="f">
+  <label>Email <input name="email" type="email" required></label><br>
+  <label>Internal referral code <input name="referral" type="text" required></label><br>
+  <button type="submit">Submit application</button>
+</form>
+<div id="done" hidden>Application submitted.</div>
+<script>f.onsubmit = e => { e.preventDefault(); f.hidden = true; done.hidden = false; };</script>

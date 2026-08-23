@@ -19,6 +19,11 @@ reportlab>=4.0
 # LLM providers over REST (no vendor SDK lock-in)
 httpx>=0.27
 
+# V3 browser automation. The package is light; the browser binaries are NOT (~150MB) and
+# are installed separately with `playwright install chromium` — only on the browser worker,
+# never in the API web service (see docs/deployment.md). Importing the app never needs it.
+playwright>=1.40
+
 # Dev / tests
 pytest>=8.0
 
