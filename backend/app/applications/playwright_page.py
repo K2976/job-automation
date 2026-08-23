@@ -41,6 +41,7 @@ el => {
   let label = el.getAttribute('aria-label') || '';
   if (!label && el.id) { const l = document.querySelector('label[for="' + el.id + '"]'); if (l) label = l.innerText; }
   if (!label) { const p = el.closest('label'); if (p) label = p.innerText; }
+  if (!label) { const fs = el.closest('fieldset'); const lg = fs && fs.querySelector('legend'); if (lg) label = lg.innerText; }
   if (!label) label = el.getAttribute('placeholder') || '';
   const options = tag === 'select' ? Array.from(el.options).map(o => o.textContent.trim()) : [];
   return { tag, type, label: (label || '').trim(), name: el.getAttribute('name') || '',

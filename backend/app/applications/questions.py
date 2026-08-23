@@ -66,8 +66,12 @@ def _answer_supported(answer: str, supported: set[str]) -> bool:
 
 
 def _q(fd: FieldDescriptor, **kw) -> ApplicationQuestion:
+    # A field with neither a detectable label nor a name would otherwise reach the review
+    # screen as a blank line with an empty input — leaving the user with no idea what to
+    # answer. Fall back to something identifiable so it's never blank (§5 human-in-the-loop).
+    text = fd.label or fd.name or f"Unlabeled {fd.field_type.value} field ({fd.key})"
     return ApplicationQuestion(
-        field_key=fd.key, question_text=fd.label or fd.name, name=fd.name,
+        field_key=fd.key, question_text=text, name=fd.name,
         field_type=fd.field_type, required=fd.required, options=fd.options, **kw)
 
 
