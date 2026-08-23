@@ -45,13 +45,19 @@ def _task_or_404(task_id: int) -> ApplicationTask:
     return task
 
 
+def _display_text(q, index: int) -> str:
+    """Never blank, even for a question stored before the labeling fix landed (§5) — a task
+    created before that fix has its blank question_text frozen in the DB until re-driven, and
+    a blank label leaves the user with no idea what an input box is asking for."""
+    return q.question_text or q.name or f"Unlabeled {q.field_type.value} field ({q.field_key or index})"
+
+
 def _summary(task: ApplicationTask) -> dict:
     """Structured pre-submit summary (§27)."""
     by_source: dict[str, int] = {}
     for q in task.questions:
         by_source[q.answer_source.value] = by_source.get(q.answer_source.value, 0) + 1
-    unresolved = [q.question_text for q in task.questions
-                  if q.required and (q.requires_review or not q.answer)]
+    unresolved = [q for q in task.questions if q.required and (q.requires_review or not q.answer)]
     return {
         "questions": len(task.questions),
         "deterministic": by_source.get("CANDIDATE_PROFILE", 0)
@@ -59,7 +65,12 @@ def _summary(task: ApplicationTask) -> dict:
         "llm_generated": by_source.get("LLM_GENERATED", 0),
         "user_provided": by_source.get("USER_PROVIDED", 0),
         "unresolved": len(unresolved),
-        "unresolved_questions": unresolved,
+        # {key, text}, not bare text — several unresolved questions can share identical (or
+        # blank) question_text, and a plain string can't be a stable, collision-free answer key.
+        "unresolved_questions": [
+            {"key": q.field_key or q.name or f"q{i}", "text": _display_text(q, i)}
+            for i, q in enumerate(unresolved)
+        ],
         "can_submit": can_submit(task),
         "status": task.status.value,
         "approval_mode": task.approval_mode.value,
@@ -159,10 +170,19 @@ def provide_answers(task_id: int, body: AnswersIn) -> ApplicationTask:
     (which carries these USER_PROVIDED answers over)."""
     task = _task_or_404(task_id)
     for q in task.questions:
-        if q.name in body.answers or q.question_text in body.answers:
-            q.answer = body.answers.get(q.name) or body.answers.get(q.question_text, "")
-            q.answer_source = AnswerSource.USER_PROVIDED
-            q.requires_review = False
+        # field_key first: it's always unique per question, unlike name/question_text which
+        # can be blank or duplicated across questions on the same form (§5) — matching only
+        # on those let one answer silently overwrite several unrelated blank-labeled fields.
+        if q.field_key and q.field_key in body.answers:
+            q.answer = body.answers[q.field_key]
+        elif q.name and q.name in body.answers:
+            q.answer = body.answers[q.name]
+        elif q.question_text and q.question_text in body.answers:
+            q.answer = body.answers[q.question_text]
+        else:
+            continue
+        q.answer_source = AnswerSource.USER_PROVIDED
+        q.requires_review = False
     if task.status in (St.USER_ACTION_REQUIRED, St.LOGIN_REQUIRED, St.REVIEW_REQUIRED):
         task.status = St.QUEUED
     db.save_task(task)

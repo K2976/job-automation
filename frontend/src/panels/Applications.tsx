@@ -195,11 +195,11 @@ function TaskDetail({ eng, taskId, onClose }:
             {needsInput && s.unresolved_questions.length > 0 &&
               <Surface className="p-4">
                 <div className="mb-2 text-[14px] font-semibold text-ink">Questions needing your answer</div>
-                {s.unresolved_questions.map((q, i) => (
-                  <label key={i} className="mb-3 block">
-                    <span className="mb-1 block text-[14px] text-ink-soft">{q}</span>
+                {s.unresolved_questions.map(q => (
+                  <label key={q.key} className="mb-3 block">
+                    <span className="mb-1 block text-[14px] text-ink-soft">{q.text}</span>
                     <input className={inputCls}
-                      onChange={e => setAnswers(a => ({ ...a, [q]: e.target.value }))} />
+                      onChange={e => setAnswers(a => ({ ...a, [q.key]: e.target.value }))} />
                   </label>
                 ))}
                 <Button size="sm" disabled={!!eng.busy}

@@ -103,6 +103,39 @@ def test_high_impact_pauses_then_user_answer_resumes():
     assert client.get(f"/api/applications/{tid}").json()["task"]["status"] == "CONFIRMED"
 
 
+UNLABELED_PAIR = [{"fields": [
+    {"label": "Email", "name": "email", "type": "email", "required": True},
+    # Two fields with neither a label nor a name (e.g. EEO radio groups the page never
+    # associates a <label> with) — both used to collapse to the same blank display string
+    # and the same "" answer key, so answering one silently overwrote the other.
+    {"label": "", "name": "", "type": "radio", "required": True, "options": ["Yes", "No"]},
+    {"label": "", "name": "", "type": "radio", "required": True, "options": ["Yes", "No"]},
+    {"label": "Resume", "name": "resume", "type": "file", "required": True},
+], "control": "submit", "confirmation": "Application submitted"}]
+
+
+def test_unresolved_questions_have_unique_keys_and_labels_even_when_blank():
+    _use_form(UNLABELED_PAIR)
+    cid, bid, ids, created = _ready_batch(mode="MANUAL", n=1)
+    tid = created["tasks"][0]["id"]
+    client.post(f"/api/applications/{tid}/start")
+    s = client.get(f"/api/applications/{tid}/summary").json()
+    uq = s["unresolved_questions"]
+    assert len(uq) == 2
+    assert all(q["text"] for q in uq)                     # never blank
+    assert len({q["key"] for q in uq}) == 2                # never colliding
+    assert len({q["text"] for q in uq}) == 2               # distinguishable to the user
+
+    # answering by key must land on the right question, not both
+    client.post(f"/api/applications/{tid}/answers",
+                json={"answers": {uq[0]["key"]: "Yes", uq[1]["key"]: "No"}})
+    task = client.get(f"/api/applications/{tid}").json()["task"]
+    answers = {q.get("field_key"): q["answer"] for q in task["questions"] if q["field_key"] in
+               {uq[0]["key"], uq[1]["key"]}}
+    assert answers[uq[0]["key"]] == "Yes"
+    assert answers[uq[1]["key"]] == "No"
+
+
 def test_manual_task_cannot_be_approved():
     cid, bid, ids, created = _ready_batch(mode="MANUAL", n=1)
     tid = created["tasks"][0]["id"]

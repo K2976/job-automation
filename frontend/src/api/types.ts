@@ -189,8 +189,10 @@ export interface ApplicationTask {
   finished_at: string; submitted_at: string
 }
 
+export interface UnresolvedQuestion { key: string; text: string }
+
 export interface ApplicationSummary {
   questions: number; deterministic: number; llm_generated: number; user_provided: number
-  unresolved: number; unresolved_questions: string[]; can_submit: boolean
+  unresolved: number; unresolved_questions: UnresolvedQuestion[]; can_submit: boolean
   status: string; approval_mode: string
 }
