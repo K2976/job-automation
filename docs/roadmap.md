@@ -37,13 +37,27 @@ See [opportunity-intelligence.md](opportunity-intelligence.md),
 CAPTCHA solving/bypass. A blocked/CAPTCHA/unreachable source is skipped and reported — never
 retried or bypassed.
 
-## V3 — Application assistance (not built)
-`job → tailored résumé → cover letter → application-form assistance → human review →
-submission`. Retains human confirmation before any submission. **Not** part of V1.
+## V3 — Application automation (this release)
+`READY_TO_APPLY opportunity → Playwright fills the application → validate → approval policy →
+submit when permitted → track`. Deterministic-first browser automation: the DOM/accessibility
+tree fills identity/résumé/cover-letter fields, the LLM answers only semantic questions (and
+its answer is validated), and high-impact questions (salary/visa/relocation) always pause.
 
-Job search/scraping and application automation are intentionally excluded from V1
-(CLAUDE.md §25, §41). Interfaces are kept extensible so these can be added later without
-reworking the core.
+Done: ApplicationTask + state machine · BrowserPage protocol with FakePage (browser-free
+engine tests) + PlaywrightPage (real Chromium) · deterministic field mapper · question engine
+with validated LLM fallback · MANUAL / REVIEW_BEFORE_SUBMIT / AUTONOMOUS modes behind one
+submit predicate · CAPTCHA→BLOCKED (never bypassed) · multi-page forms · confirmation vs
+SUBMISSION_UNCERTAIN · batch-max enforcement with no backfill · queue API + worker · mock
+application site · Applications UI · docs. V1/V2 unchanged.
+
+See [application-automation.md](application-automation.md), [browser-agent.md](browser-agent.md),
+[application-questions.md](application-questions.md), [approval-modes.md](approval-modes.md),
+[application-state-machine.md](application-state-machine.md).
+
+**Not** in V3: CAPTCHA bypass, anti-bot evasion, fabricated answers, password storage, a live
+browser-viewer UI, screenshot-driven LLM control. Human confirmation is retained before any
+submission except explicitly-configured autonomous mode (which still refuses to submit when
+anything is unresolved).
 
 [ADR-001]: decisions/ADR-001-sqlite-over-postgres.md
 [ADR-002]: decisions/ADR-002-numpy-over-pgvector.md

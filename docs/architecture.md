@@ -85,3 +85,27 @@ deterministic matching/gaps — **no** `build_plan`/`rewrite`), so LLM cost is o
 analysed opportunity; the full `analyze_job` + generation runs only at package preparation,
 for *selected* opportunities. The Opportunity's `job_id` links back to a V1 `Job`. See
 [opportunity-intelligence.md](opportunity-intelligence.md).
+
+## V3 — Application Automation
+A deterministic-first Playwright layer that fills and (optionally) submits applications:
+
+```
+FastAPI  (applications_api.py — queue + controls; browser work in a BackgroundTask)
+      │
+Queue/worker  (applications/queue.py — one task per opportunity ≤ batch max; serial; sets APPLIED)
+      │
+Runner  (applications/runner.py — pure over the BrowserPage protocol; no Playwright, no DB)
+      │
+   ┌──┴───────────────┬────────────────────┐
+   ▼                  ▼                    ▼
+Field mapper      Question engine       BrowserPage
+(deterministic)   (LLM only for         ├─ FakePage (tests, no browser)
+                   semantic + validate)  └─ PlaywrightPage (real Chromium)
+```
+
+The intelligence never imports Playwright — the runner talks only to `BrowserPage`, so the
+engine is fully tested with `FakePage` and re-verified against real Chromium on a local mock
+site. Reuses V1 (résumé via reportlab, evidence, skill-lexicon validation) and V2
+(Opportunity, ApplicationBatch, batch max, cover letter) unchanged. `APPLIED` is set in one
+place, only on a real submission. See [application-automation.md](application-automation.md),
+[browser-agent.md](browser-agent.md), [application-state-machine.md](application-state-machine.md).

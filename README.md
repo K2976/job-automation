@@ -168,6 +168,19 @@ real-count progress. See [opportunity-intelligence.md](docs/opportunity-intellig
 [opportunity-sources.md](docs/opportunity-sources.md), and
 [application-batches.md](docs/application-batches.md).
 
-All offline on the mock provider: 40+ backend test cases and a typechecked frontend build.
-Application automation (**V3**) — browser control, form filling, submission — is
-intentionally **not** built. See the [roadmap](docs/roadmap.md).
+**V3 — Application Automation** is complete: a deterministic-first Playwright layer that
+fills and (optionally) submits applications for prepared opportunities. The DOM/accessibility
+tree fills identity/résumé/cover-letter fields; the LLM answers only semantic questions and
+its answer is validated against candidate evidence; high-impact questions (salary/visa/
+relocation) always pause. Three approval modes (Manual / Review-before-submit / Autonomous)
+behind one submit predicate; CAPTCHAs stop the agent and are never bypassed; multi-page forms,
+confirmation vs submission-uncertain, and the V2 batch maximum are all handled. The engine is
+decoupled from the browser behind a `BrowserPage` protocol, so it is tested with an in-memory
+fake **and** re-verified against real Chromium on a bundled mock application site. Surfaced
+through an Applications section (operational controls only — no live browser viewer). See
+[application-automation.md](docs/application-automation.md),
+[browser-agent.md](docs/browser-agent.md), [approval-modes.md](docs/approval-modes.md).
+
+All offline on the mock provider: 60+ backend test cases (Playwright tests skip if Chromium is
+absent) and a typechecked frontend build. The production browser worker must run as a
+dedicated service — see [deployment.md](docs/deployment.md). Roadmap: [docs/roadmap.md](docs/roadmap.md).

@@ -76,3 +76,22 @@ reportlab is the reliable fallback.
 ## Single-host alternative (simplest)
 Skip Vercel entirely: `cd frontend && npm run build`, then run the backend — FastAPI serves
 `frontend/dist` at `/`. One origin, no CORS, no `VITE_API_BASE`. Good for a self-hosted box.
+
+## V3 browser worker (Playwright)
+Application automation (V3) runs a real Chromium via Playwright. **Do not run it in the API
+web service**, and do not assume a free-tier web service can host it:
+
+- `playwright` is in `requirements.txt`, but the browser binaries (~150MB) are **not**
+  installed by the API build — importing the app never needs them. Install them only where
+  the worker runs: `playwright install chromium` (plus `playwright install-deps` on Linux for
+  the shared libraries Chromium needs).
+- A browser process is memory/CPU-heavy and long-lived relative to an HTTP request. Render's
+  **free web tier is not suitable** (limited memory, ephemeral disk, aggressive idle
+  suspension that can kill a mid-run task). Run the worker as a **dedicated service** — a
+  Render Background Worker / paid instance with the browsers installed, or locally.
+- The worker is decoupled by design: the runner is pure over the `BrowserPage` protocol, and
+  the queue's page factory is injectable. Locally, discovery/prepare/apply all run in one
+  process; in production the browser worker should be split out (see
+  [application-automation.md](application-automation.md), [browser-agent.md](browser-agent.md)).
+- Tasks run **serially** (one Chromium context at a time) in isolated contexts; no cookies or
+  credentials are persisted.
