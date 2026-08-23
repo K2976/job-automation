@@ -24,7 +24,7 @@ export interface AppsEngine {
   control: (taskId: number, action: string) => Promise<void>
 }
 
-export function useApplications(candidateId: number | null): AppsEngine {
+export function useApplications(candidateId: number | null, active = true): AppsEngine {
   const [batches, setBatches] = useState<ApplicationBatch[]>([])
   const [tasks, setTasks] = useState<ApplicationTask[]>([])
   const [opps, setOpps] = useState<Record<number, Opportunity>>({})
@@ -41,7 +41,11 @@ export function useApplications(candidateId: number | null): AppsEngine {
     setOpps(Object.fromEntries(opportunities.map(o => [o.id, o])))
   }, [candidateId])
 
-  useEffect(() => { reload().catch(() => {}) }, [reload])
+  // Reloads on mount AND every time the tab becomes active again — not just once. This
+  // panel stays mounted (hidden, not unmounted) once visited so a running discovery poll
+  // survives tab switches; without this, a batch created while you were on another tab
+  // would never appear here since the one-time mount reload already ran before it existed.
+  useEffect(() => { if (active) reload().catch(() => {}) }, [active, reload])
 
   // Poll while any task is still moving through the browser worker.
   const pollUntilSettled = useCallback(async () => {

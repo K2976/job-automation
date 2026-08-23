@@ -42,8 +42,8 @@ function WorkerBadge() {
   )
 }
 
-export default function Applications({ candidateId }: { candidateId: number | null }) {
-  const eng = useApplications(candidateId)
+export default function Applications({ candidateId, active }: { candidateId: number | null; active?: boolean }) {
+  const eng = useApplications(candidateId, active)
   const [detail, setDetail] = useState<number | null>(null)
 
   if (!candidateId)

@@ -85,7 +85,7 @@ export function Shell({ engine }: { engine: ReturnType<typeof useEngine> }) {
                 tailored application packages — nothing is submitted.
               </p>
             </header>
-            <Opportunities candidateId={engine.candidate?.id ?? null} />
+            <Opportunities candidateId={engine.candidate?.id ?? null} active={view === 'opportunities'} />
           </div>}
 
         {visited.has('applications') &&
@@ -97,7 +97,7 @@ export function Shell({ engine }: { engine: ReturnType<typeof useEngine> }) {
                 CAPTCHAs stop the agent and are never bypassed.
               </p>
             </header>
-            <Applications candidateId={engine.candidate?.id ?? null} />
+            <Applications candidateId={engine.candidate?.id ?? null} active={view === 'applications'} />
           </div>}
       </main>
     </div>

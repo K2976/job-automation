@@ -12,8 +12,8 @@ type Tab = typeof TABS[number]
 const pct = (n: number) => `${Math.round(n * 100)}%`
 const list = (s: string) => s.split(',').map(x => x.trim()).filter(Boolean)
 
-export default function Opportunities({ candidateId }: { candidateId: number | null }) {
-  const opp = useOpportunities(candidateId)
+export default function Opportunities({ candidateId, active }: { candidateId: number | null; active?: boolean }) {
+  const opp = useOpportunities(candidateId, active)
   const [tab, setTab] = useState<Tab>('Discover')
   const [detail, setDetail] = useState<number | null>(null)
 

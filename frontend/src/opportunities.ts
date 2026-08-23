@@ -32,7 +32,7 @@ export interface OppEngine {
   setStatus: (oid: number, status: string) => Promise<void>
 }
 
-export function useOpportunities(candidateId: number | null): OppEngine {
+export function useOpportunities(candidateId: number | null, active = true): OppEngine {
   const [prefs, setPrefs] = useState<SearchPreferences>(EMPTY_PREFS)
   const [run, setRun] = useState<DiscoveryRun | null>(null)
   const [discovering, setDiscovering] = useState(false)
@@ -43,14 +43,17 @@ export function useOpportunities(candidateId: number | null): OppEngine {
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  // Load saved preferences + any prior opportunities when the candidate changes.
+  // Load saved preferences + any prior opportunities when the candidate changes, and again
+  // every time this tab becomes active — it stays mounted (hidden) once visited so a running
+  // discovery poll survives tab switches, so a plain mount-only load would go stale the
+  // moment something changed while you were looking at another tab.
   useEffect(() => {
-    if (!candidateId) return
+    if (!candidateId || !active) return
     api.getPreferences(candidateId).then(setPrefs).catch(() => {})
     reload().catch(() => {})
     api.sources(candidateId).then(r => setSources(r.sources)).catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [candidateId])
+  }, [candidateId, active])
 
   const reload = useCallback(async () => {
     if (!candidateId) return
