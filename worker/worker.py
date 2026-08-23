@@ -89,14 +89,33 @@ def _heartbeat_thread(client: httpx.Client, task_id: int) -> tuple[threading.Thr
     def loop():
         while not stop.wait(HEARTBEAT_SECONDS):
             try:
+                # A short timeout of its own: the shared client's 60s default would let one
+                # slow/cold-starting API request eat most of the 45s server-side staleness
+                # window all by itself. Failing fast means the next tick, 15s later, gets a
+                # real second chance instead of waiting out a single stuck call.
                 client.post(f"/worker/tasks/{task_id}/heartbeat",
-                            json={"worker_id": WORKER_ID})
+                            json={"worker_id": WORKER_ID}, timeout=8.0)
             except Exception:  # noqa: BLE001 — a missed ping is not fatal
                 pass
 
     t = threading.Thread(target=loop, daemon=True)
     t.start()
     return t, stop
+
+
+def _report_crash(client: httpx.Client, task: ApplicationTask, e: Exception) -> None:
+    print(f"[worker] task {task.id} crashed: {type(e).__name__}: {e}", flush=True)
+    try:
+        client.post(f"/worker/tasks/{task.id}/fail", json={
+            "worker_id": WORKER_ID, "error_code": "WORKER_ERROR",
+            "error_message": f"{type(e).__name__}: {e}",
+            # Whatever run_task got through before crashing — a crash shouldn't also
+            # throw away the fields it had already filled.
+            "questions": [q.model_dump() for q in task.questions],
+            "logs": [ev.model_dump() for ev in task.logs],
+            "current_page": task.current_page})
+    except Exception:  # noqa: BLE001 — API unreachable; stale recovery will catch it
+        pass
 
 
 def _process(client: httpx.Client, claim: dict) -> None:
@@ -131,19 +150,20 @@ def _process(client: httpx.Client, claim: dict) -> None:
             "finished_at": task.finished_at,
         }).raise_for_status()
         print(f"[worker] task {task.id} -> {task.status.value}", flush=True)
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code == 409:
+            # The API already moved this task on without us — almost always its own stale-
+            # claim recovery deciding we'd gone quiet (a slow/cold-starting API can delay our
+            # heartbeats past its timeout even though the run itself is still fine) and
+            # requeuing or flagging the task itself. That is NOT our crash to report: posting
+            # /fail would just 409 again (the task isn't CLAIMED anymore either) and would
+            # overwrite whatever outcome the API already recorded with a misleading one.
+            print(f"[worker] task {task.id}: API already resolved this claim (409) — "
+                  "leaving its recovered status as-is", flush=True)
+        else:
+            _report_crash(client, task, e)
     except Exception as e:  # noqa: BLE001 — report and move on; the API decides recovery (§18)
-        print(f"[worker] task {task.id} crashed: {type(e).__name__}: {e}", flush=True)
-        try:
-            client.post(f"/worker/tasks/{task.id}/fail", json={
-                "worker_id": WORKER_ID, "error_code": "WORKER_ERROR",
-                "error_message": f"{type(e).__name__}: {e}",
-                # Whatever run_task got through before crashing — a crash shouldn't also
-                # throw away the fields it had already filled.
-                "questions": [q.model_dump() for q in task.questions],
-                "logs": [ev.model_dump() for ev in task.logs],
-                "current_page": task.current_page})
-        except Exception:  # noqa: BLE001 — API unreachable; stale recovery will catch it
-            pass
+        _report_crash(client, task, e)
     finally:
         hb_stop.set()
         hb_thread.join(timeout=2)

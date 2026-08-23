@@ -65,13 +65,23 @@ def _answer_supported(answer: str, supported: set[str]) -> bool:
     return all(normalize_skill(s) in supported for s in extract_skills(answer))
 
 
+def field_label(fd: FieldDescriptor) -> str:
+    """The best available label for a field: its detected label/name, or — if neither exists
+    (e.g. an EEO radio group the page never associates a <label> with) — a fallback built from
+    its type and driver key. Never blank (§5 human-in-the-loop): an unlabeled field would
+    otherwise reach the review screen as an empty line with no way to tell what to answer.
+
+    Also doubles as the cross-run identity used to carry a user's answer over on a re-drive
+    (runner.py): a fresh driver session renumbers fields identically for the same DOM order,
+    so this fallback is stable run-to-run for the same field — the runner's lookup MUST apply
+    this exact same fallback (not a bare `fd.name or fd.label`), or a blank-labeled field's
+    carried-over answer key never matches on the next drive and looks like it silently reset."""
+    return fd.label or fd.name or f"Unlabeled {fd.field_type.value} field ({fd.key})"
+
+
 def _q(fd: FieldDescriptor, **kw) -> ApplicationQuestion:
-    # A field with neither a detectable label nor a name would otherwise reach the review
-    # screen as a blank line with an empty input — leaving the user with no idea what to
-    # answer. Fall back to something identifiable so it's never blank (§5 human-in-the-loop).
-    text = fd.label or fd.name or f"Unlabeled {fd.field_type.value} field ({fd.key})"
     return ApplicationQuestion(
-        field_key=fd.key, question_text=text, name=fd.name,
+        field_key=fd.key, question_text=field_label(fd), name=fd.name,
         field_type=fd.field_type, required=fd.required, options=fd.options, **kw)
 
 

@@ -44,8 +44,13 @@ class Settings(BaseSettings):
     inline_applications: bool = True
     # A worker (and any task it holds) is considered offline/stale after this many seconds
     # with no heartbeat; a claim must be at least `worker_stale_grace` old to be recovered.
-    worker_heartbeat_timeout: float = 45.0
-    worker_stale_grace: float = 60.0
+    # Render's free tier can cold-start in ~50s after spinning down from inactivity — these
+    # were 45s/60s, tight enough that a cold start alone (not a real crash) could delay a
+    # heartbeat past the timeout and get an in-progress task wrongly recovered out from under
+    # a worker that was never actually gone. Widened for headroom; override via env if you're
+    # on an always-on plan and want faster crash detection instead.
+    worker_heartbeat_timeout: float = 90.0
+    worker_stale_grace: float = 90.0
 
     # --- V2 opportunity discovery ---
     # Enabled source adapters (comma-separated). Greenhouse + Lever are official no-auth

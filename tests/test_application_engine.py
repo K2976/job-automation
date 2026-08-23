@@ -234,5 +234,31 @@ def test_user_answer_to_high_impact_persists_across_redrive():
     assert runner.applied(t)
 
 
+def test_blank_labeled_answer_never_leaks_onto_a_differently_typed_field():
+    """Two fields with neither a label nor a name (e.g. unlabeled EEO radios) used to collapse
+    to the same blank prior-answer key. Answering one and re-driving could hand its answer to
+    a completely different field sharing that blank key — including a file upload, where a
+    stray "No" became a literal (nonexistent) file path and crashed the real browser worker."""
+    from app.models import AnswerSource
+    form = [{"fields": [
+        {"label": "", "name": "", "type": "radio", "required": True, "options": ["Yes", "No"]},
+        {"label": "", "name": "", "type": "file", "required": True},
+    ], "control": "submit", "confirmation": "Application submitted"}]
+    t = _task(ApprovalMode.MANUAL)
+    run_it(t, FakePage(form), submit=False)
+    assert t.status == St.USER_ACTION_REQUIRED
+
+    radio_q = t.questions[0]
+    radio_q.answer = "No"
+    radio_q.answer_source = AnswerSource.USER_PROVIDED
+    radio_q.requires_review = False
+
+    run_it(t, FakePage(form), submit=False)
+    file_q = t.questions[1]
+    assert file_q.field_type == FieldType.file
+    assert file_q.answer != "No"                    # never misapplied across field types
+    assert file_q.requires_review                   # still correctly flagged, not silently guessed
+
+
 def run_it(task, page, *, submit):
     return runner.run_task(task, page, _ctx(), submit=submit)

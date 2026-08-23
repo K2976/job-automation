@@ -17,7 +17,7 @@ from ..models import (
     FieldType,
 )
 from .page import BrowserPage, CONTINUE, SUBMIT
-from .questions import FillContext, classify, unresolved
+from .questions import FillContext, classify, field_label, unresolved
 from .state_machine import transition
 
 MAX_PAGES = 12  # ponytail: hard page cap so a mis-detected form can't loop forever
@@ -80,9 +80,13 @@ def run_task(task: ApplicationTask, page: BrowserPage, ctx: FillContext, *,
     # Carry over answers that must NOT be regenerated across a re-drive: a user's answer to
     # a high-impact/unknown question (else it's lost and re-flagged), and an LLM answer the
     # user already reviewed (else REVIEW_BEFORE_SUBMIT would submit different text — §27, §15).
+    # A blank (name or question_text) is never a safe cross-run identity — several unrelated
+    # fields on the same page can share it, and reusing it has handed one field's answer to a
+    # completely different (and differently-typed) field on the next drive, e.g. a "No" typed
+    # for a radio question ending up as a file upload path (§18).
     prior = {(q.name or q.question_text): q for q in task.questions
-             if q.answer and q.answer_source in (AnswerSource.USER_PROVIDED,
-                                                 AnswerSource.LLM_GENERATED)}
+             if (q.name or q.question_text) and q.answer
+             and q.answer_source in (AnswerSource.USER_PROVIDED, AnswerSource.LLM_GENERATED)}
     task.status = St.READY
     task.questions = []
     task.current_page = 0
@@ -117,8 +121,16 @@ def run_task(task: ApplicationTask, page: BrowserPage, ctx: FillContext, *,
         for fd in fields:
             if fd.field_type == FieldType.button:
                 continue
-            saved = prior.get(fd.name or fd.label)
-            if saved is not None:                        # reuse the reviewed/user answer
+            # Must mirror `prior`'s own key exactly: name first (matching `q.name or
+            # q.question_text` above), then the same label/fallback questions.py computes for
+            # question_text — a bare `fd.name or fd.label` never matches a blank-labeled
+            # field's stored fallback text and silently drops its carried-over answer on every
+            # re-drive (§18).
+            saved = prior.get(fd.name or field_label(fd))
+            # Require the field type to still match — the same name/label reused for a
+            # different kind of control (e.g. a fresh page layout) must be reclassified,
+            # not blindly filled with an answer meant for something else.
+            if saved is not None and saved.field_type == fd.field_type:
                 q = saved.model_copy(update={"field_key": fd.key})
             else:
                 q = classify(fd, ctx)
