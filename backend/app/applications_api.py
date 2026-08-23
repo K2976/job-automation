@@ -68,7 +68,8 @@ def _summary(task: ApplicationTask) -> dict:
         # {key, text}, not bare text — several unresolved questions can share identical (or
         # blank) question_text, and a plain string can't be a stable, collision-free answer key.
         "unresolved_questions": [
-            {"key": q.field_key or q.name or f"q{i}", "text": _display_text(q, i)}
+            {"key": q.field_key or q.name or f"q{i}", "text": _display_text(q, i),
+             "field_type": q.field_type.value, "options": q.options}
             for i, q in enumerate(unresolved)
         ],
         "can_submit": can_submit(task),

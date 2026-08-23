@@ -6,7 +6,7 @@ from __future__ import annotations
 import json
 import re
 from abc import ABC, abstractmethod
-from typing import Type, TypeVar
+from typing import Any, Type, TypeVar
 
 from pydantic import BaseModel, ValidationError
 
@@ -70,6 +70,17 @@ class LLMProvider(ABC):
 _JSON_SUFFIX = "Return ONLY valid minified JSON, no markdown fences."
 
 
+def _drop_nulls(value: Any) -> Any:
+    """Strip explicit `null`s the LLM emits for fields it has no data for, so our
+    Pydantic defaults (e.g. `level: str = ""`) apply instead of a type error — the
+    model schema is a target shape, not a demand that every optional field be filled."""
+    if isinstance(value, dict):
+        return {k: _drop_nulls(v) for k, v in value.items() if v is not None}
+    if isinstance(value, list):
+        return [_drop_nulls(v) for v in value]
+    return value
+
+
 def _parse_json(raw: str, schema: Type[T]) -> T:
     """Robustly pull a JSON object out of an LLM response and validate it."""
     text = raw.strip()
@@ -78,11 +89,13 @@ def _parse_json(raw: str, schema: Type[T]) -> T:
     if start != -1 and end != -1:
         text = text[start:end + 1]
     try:
-        return schema.model_validate_json(text)
-    except ValidationError as e:
-        raise LLMError(f"LLM returned data not matching {schema.__name__}: {e}") from e
+        data = json.loads(text)
     except json.JSONDecodeError as e:
         raise LLMError(f"LLM returned invalid JSON: {e}") from e
+    try:
+        return schema.model_validate(_drop_nulls(data))
+    except ValidationError as e:
+        raise LLMError(f"LLM returned data not matching {schema.__name__}: {e}") from e
 
 
 # --------------------------------------------------------------------------- #

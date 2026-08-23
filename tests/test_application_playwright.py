@@ -15,7 +15,7 @@ from app.applications.playwright_page import PlaywrightPage
 from app.applications.questions import FillContext
 from app.applications import field_mapper as fm
 from app.models import (
-    ApplicationStatus as St, ApplicationTask, ApprovalMode, Candidate,
+    AnswerSource, ApplicationStatus as St, ApplicationTask, ApprovalMode, Candidate, FieldType,
 )
 from app.providers.llm import MockLLMProvider
 
@@ -125,6 +125,32 @@ def test_unknown_required_pauses(page, resume_pdf):
 def test_high_impact_pauses(page, resume_pdf):
     t = _run("highimpact.html", page, resume_pdf)
     assert t.status == St.USER_ACTION_REQUIRED and not runner.applied(t)
+
+
+def test_choice_fields_never_guessed_then_apply_correctly_once_answered(page, resume_pdf):
+    """Native select/radio/checkbox are never auto-answered, even though every label here
+    reads as a question ("?") — proves the _is_semantic() guard keeps them off the LLM
+    free-text path. Once the user supplies answers, this is the one test that actually
+    drives page.select()/page.check() against a real <select>/<input radio>/<input
+    checkbox> — FakePage's versions are no-ops, so this is what would have caught
+    select_option() throwing on a radio input, or the checkbox truthiness bug."""
+    t = _run("choices.html", page, resume_pdf, mode=ApprovalMode.MANUAL, submit=False)
+    assert t.status == St.USER_ACTION_REQUIRED
+    for q in t.questions:
+        if q.answer_source.value == "LLM_GENERATED":
+            pytest.fail(f"choice field routed to the LLM: {q.question_text!r}")
+        if q.field_type == FieldType.select:
+            q.answer, q.answer_source, q.requires_review = (
+                "Engineering", AnswerSource.USER_PROVIDED, False)
+        elif q.field_type == FieldType.checkbox:
+            q.answer, q.answer_source, q.requires_review = (
+                "true", AnswerSource.USER_PROVIDED, False)
+        elif q.field_type == FieldType.radio and "Yes" in q.question_text:
+            q.answer, q.answer_source, q.requires_review = (
+                "true", AnswerSource.USER_PROVIDED, False)
+
+    t2 = runner.run_task(t, page, _ctx(resume_pdf), submit=True)
+    assert t2.status == St.CONFIRMED and runner.applied(t2)
 
 
 def test_submission_uncertain_without_confirmation(page, resume_pdf):

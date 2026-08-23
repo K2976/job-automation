@@ -125,6 +125,8 @@ def test_unresolved_questions_have_unique_keys_and_labels_even_when_blank():
     assert all(q["text"] for q in uq)                     # never blank
     assert len({q["key"] for q in uq}) == 2                # never colliding
     assert len({q["text"] for q in uq}) == 2               # distinguishable to the user
+    assert all(q["field_type"] == "radio" for q in uq)     # type reaches the client
+    assert all(q["options"] == ["Yes", "No"] for q in uq)  # so does the option list
 
     # answering by key must land on the right question, not both
     client.post(f"/api/applications/{tid}/answers",

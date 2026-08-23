@@ -111,6 +111,17 @@ def test_classify_unknown_required_dropdown_needs_review():
     assert q.requires_review
 
 
+def test_classify_choice_field_never_routed_to_llm_despite_question_mark_label():
+    """A checkbox/radio/select whose label happens to read like a question ("?" or a cue
+    word) must still hit step 6's "don't guess" guard, not get LLM prose as its answer —
+    the LLM has no way to answer a checkbox with free text."""
+    for ftype in ("checkbox", "radio", "select"):
+        q = classify(_fd("Do you consent to this collection?", ftype, True,
+                          options=["Yes", "No"] if ftype != "checkbox" else None), _ctx())
+        assert q.answer_source.value != "LLM_GENERATED", ftype
+        assert q.requires_review, ftype
+
+
 # ------------------------------------------------------------------ runner #
 def _basic_form(control="submit", confirmation="Application submitted"):
     return [{"fields": [
@@ -258,6 +269,33 @@ def test_blank_labeled_answer_never_leaks_onto_a_differently_typed_field():
     assert file_q.field_type == FieldType.file
     assert file_q.answer != "No"                    # never misapplied across field types
     assert file_q.requires_review                   # still correctly flagged, not silently guessed
+
+
+def test_checkbox_apply_uses_explicit_true_convention_not_truthiness():
+    """bool(answer) used to check the box for ANY non-empty string, including "false"/"no" —
+    only the literal "true" may check it."""
+    from app.models import AnswerSource
+    form = [{"fields": [
+        {"label": "Consent", "name": "consent", "type": "checkbox", "required": True},
+    ], "control": "submit", "confirmation": "Application submitted"}]
+    t = _task(ApprovalMode.MANUAL)
+    run_it(t, FakePage(form), submit=False)
+
+    q = t.questions[0]
+    q.answer = "false"
+    q.answer_source = AnswerSource.USER_PROVIDED
+    q.requires_review = False
+    page = FakePage(form)
+    run_it(t, page, submit=False)
+    assert page.values.get(t.questions[0].field_key, "") == ""  # NOT checked
+
+    q2 = t.questions[0]
+    q2.answer = "true"
+    q2.answer_source = AnswerSource.USER_PROVIDED
+    q2.requires_review = False
+    page2 = FakePage(form)
+    run_it(t, page2, submit=False)
+    assert page2.values.get(t.questions[0].field_key) == "on"  # checked
 
 
 def run_it(task, page, *, submit):

@@ -51,10 +51,12 @@ def _apply(page: BrowserPage, q) -> str:
         return "FILE_UPLOADED"
     if t == FieldType.select:
         page.select(q.field_key, q.answer)
-    elif t == FieldType.checkbox:
-        page.check(q.field_key, bool(q.answer))
-    elif t == FieldType.radio:
-        page.select(q.field_key, q.answer)
+    elif t in (FieldType.checkbox, FieldType.radio):
+        # "true" is the only checked signal (not bare truthiness — "false"/"no" strings
+        # must NOT check the box). Each radio <input> is its own field/key here (§1), so
+        # checking it is correct and relies on native radio-group exclusivity in the DOM
+        # rather than Playwright's select_option(), which only works on <select>.
+        page.check(q.field_key, q.answer == "true")
     else:
         page.fill(q.field_key, q.answer)
     return "FIELD_FILLED"

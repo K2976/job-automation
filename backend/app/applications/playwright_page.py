@@ -44,8 +44,10 @@ el => {
   if (!label) { const fs = el.closest('fieldset'); const lg = fs && fs.querySelector('legend'); if (lg) label = lg.innerText; }
   if (!label) label = el.getAttribute('placeholder') || '';
   const options = tag === 'select' ? Array.from(el.options).map(o => o.textContent.trim()) : [];
+  const decoy = el.getAttribute('aria-hidden') === 'true' || getComputedStyle(el).opacity === '0';
   return { tag, type, label: (label || '').trim(), name: el.getAttribute('name') || '',
-           required: !!el.required || el.getAttribute('aria-required') === 'true', options };
+           required: !!el.required || el.getAttribute('aria-required') === 'true', options,
+           decoy };
 }
 """
 
@@ -82,6 +84,20 @@ class PlaywrightPage:
         for handle in self.page.query_selector_all("input, textarea, select"):
             d = handle.evaluate(_DESCRIBE)
             if d["tag"] == "input" and d["type"] in _SKIP_INPUT_TYPES:
+                continue
+            # A CSS-hidden control (e.g. a custom dropdown's shadow "selected value" input,
+            # a common pattern behind Greenhouse-style comboboxes) can never actually be
+            # filled — Playwright's actionability checks refuse to act on it — so detecting
+            # it just adds a permanently-unresolvable duplicate of its visible companion
+            # field, blocking submission forever. File inputs are the one common exception:
+            # sites routinely hide the native <input type=file> behind a styled "Upload"
+            # button, and set_input_files() works on it regardless of visibility.
+            #
+            # Playwright's own is_visible() only checks display/visibility/size — it misses
+            # the aria-hidden="true" + opacity:0 decoy pattern Greenhouse uses for a custom
+            # combobox's native-validation proxy input (real, non-empty bounding box, so
+            # is_visible() says True; but genuinely unreachable by a human or by .fill()).
+            if d["type"] != "file" and (d["decoy"] or not handle.is_visible()):
                 continue
             out.append(FieldDescriptor(
                 key=self._key(handle), label=d["label"], name=d["name"],

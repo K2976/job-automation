@@ -54,6 +54,11 @@ def _high_impact(text: str) -> str | None:
 
 
 def _is_semantic(fd: FieldDescriptor) -> bool:
+    # Choice fields (select/radio/checkbox) are never semantic free-text, no matter how
+    # their label reads ("?" or a cue word) — they must always reach step 6's "don't
+    # guess" guard instead of getting LLM prose as an answer.
+    if fd.field_type in (FieldType.select, FieldType.radio, FieldType.checkbox):
+        return False
     low = fd.label.lower()
     return fd.field_type == FieldType.textarea or "?" in fd.label or \
         any(c in low for c in _SEMANTIC_CUES)
@@ -113,8 +118,11 @@ def classify(fd: FieldDescriptor, ctx: FillContext) -> ApplicationQuestion:
         return _q(fd, requires_review=bool(fd.required),
                   reason="Cover letter required but not prepared." if fd.required else "")
 
-    # 4. Deterministic identity/contact field from the profile (§13).
-    if canon in ctx.candidate_values:
+    # 4. Deterministic identity/contact field from the profile (§13). Never for a choice
+    # field — a profile string (name, URL, ...) is never a valid answer for one, and
+    # letting it through here would bypass step 6's "don't guess" guard.
+    if canon in ctx.candidate_values and fd.field_type not in (
+            FieldType.select, FieldType.radio, FieldType.checkbox):
         value = ctx.candidate_values[canon]
         if value:
             return _q(fd, answer=value, answer_source=AnswerSource.CANDIDATE_PROFILE,

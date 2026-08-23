@@ -21,6 +21,10 @@ class GroqLLMProvider(LLMProvider):
         payload = {
             "model": self.model,
             "temperature": 0.2,
+            # Groq's server-side default output cap is too small for a full résumé's
+            # worth of structured JSON (MasterProfile with dozens of KB entities) and
+            # silently truncates mid-response, producing invalid JSON downstream.
+            "max_tokens": 8000,
             "messages": [
                 {"role": "system", "content": system},
                 {"role": "user", "content": user},
