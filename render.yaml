@@ -1,8 +1,11 @@
-# Render Blueprint for the FastAPI backend.
+# Render Blueprint for the FastAPI backend + a managed Postgres for durable state.
 # Secrets use sync:false — set them in the Render dashboard, never in the repo.
-# NOTE: no persistent disk by default (keeps it free-tier deployable). The SQLite DB is
-# therefore ephemeral — it resets on redeploy/spin-down. See docs/deployment.md for the
-# persistent-disk upgrade.
+# The V3 browser worker is NOT here — it runs only on the MacBook in Docker (see
+# docs/production-architecture.md and docs/deployment-runbook.md).
+databases:
+  - name: adaptive-resume-db
+    plan: free            # NOTE: Render free Postgres expires ~30 days; upgrade for a long-lived demo.
+
 services:
   - type: web
     name: adaptive-resume-api
@@ -15,6 +18,19 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: "3.12.7"
+      # Durable state: point at the managed Postgres above (§10). Omit this and it falls
+      # back to ephemeral SQLite (fine for a single throwaway demo, lost on redeploy).
+      - key: DATABASE_URL
+        fromDatabase:
+          name: adaptive-resume-db
+          property: connectionString
+      # Remote browser worker channel (§13). Generate: python -c "import secrets;print(secrets.token_urlsafe(32))"
+      # Set the SAME value in the MacBook worker's .env.worker. Empty ⇒ channel refused.
+      - key: WORKER_AUTH_TOKEN
+        sync: false
+      # The API service must never launch Chromium — only enqueue. The MacBook worker runs it.
+      - key: INLINE_APPLICATIONS
+        value: "false"
       # Default to the offline mock so a fresh deploy costs nothing until you opt in.
       - key: LLM_PROVIDER
         value: mock

@@ -148,7 +148,56 @@ CREATE TABLE IF NOT EXISTS worker (
 """
 
 
-def get_conn() -> sqlite3.Connection:
+# --------------------------------------------------------------------------- #
+# Dialect: SQLite by default (ADR-001), Postgres when DATABASE_URL has a pg scheme.        #
+# One chokepoint — get_conn() + _insert() + the schema/claim branches below — so the rest  #
+# of this file is written once against a sqlite-shaped API (`?` params, row["col"],         #
+# cur.lastrowid). SQLite is the sacred, unchanged path; Postgres is purely additive.        #
+# --------------------------------------------------------------------------- #
+def _is_pg() -> bool:
+    return settings.database_url.split("://", 1)[0] in (
+        "postgres", "postgresql", "postgresql+psycopg")
+
+
+class _PGConn:
+    """Makes a psycopg3 connection behave like the sqlite3 one the code expects: rewrites
+    `?` placeholders to `%s`, yields dict rows (row["col"]), and commits+closes on `with`
+    exit. There are no literal `%` in this file's SQL, so the placeholder swap is safe."""
+    def __init__(self, conn):
+        self._c = conn
+
+    def execute(self, sql, params=()):
+        return self._c.execute(sql.replace("?", "%s"), params)
+
+    def executemany(self, sql, seq):
+        with self._c.cursor() as cur:
+            cur.executemany(sql.replace("?", "%s"), list(seq))
+
+    def commit(self):
+        self._c.commit()
+
+    def rollback(self):
+        self._c.rollback()
+
+    def close(self):
+        self._c.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, *_):
+        (self._c.rollback if exc_type else self._c.commit)()
+        self._c.close()
+
+
+def get_conn():
+    """A fresh connection with sqlite3-shaped semantics on either driver. ponytail: no pool —
+    one connect per call; add a pool only if Postgres round-trip latency shows up."""
+    if _is_pg():
+        import psycopg
+        from psycopg.rows import dict_row
+        return _PGConn(psycopg.connect(settings.database_url, row_factory=dict_row,
+                                       autocommit=False))
     settings.db_path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(settings.db_path, timeout=30)
     conn.row_factory = sqlite3.Row
@@ -159,7 +208,30 @@ def get_conn() -> sqlite3.Connection:
     return conn
 
 
+def _insert(conn, sql: str, params) -> int:
+    """Run an INSERT and return the new id. Postgres has no lastrowid, so append RETURNING;
+    SQLite uses the cursor's lastrowid. The one place auto-increment ids are read."""
+    if _is_pg():
+        return int(conn.execute(sql + " RETURNING id", params).fetchone()["id"])
+    return int(conn.execute(sql, params).lastrowid)
+
+
+def _pg_ddl(schema: str) -> list[str]:
+    """Translate the SQLite SCHEMA to Postgres statements: `INTEGER PRIMARY KEY AUTOINCREMENT`
+    → SERIAL, strip `--` comments, split into one-command-per-execute chunks (psycopg runs a
+    single command per execute). All CREATEs use IF NOT EXISTS, so it's idempotent."""
+    import re
+    ddl = re.sub(r"--[^\n]*", "", schema).replace(
+        "INTEGER PRIMARY KEY AUTOINCREMENT", "SERIAL PRIMARY KEY")
+    return [s.strip() for s in ddl.split(";") if s.strip()]
+
+
 def init_db() -> None:
+    if _is_pg():
+        with get_conn() as conn:
+            for stmt in _pg_ddl(SCHEMA):
+                conn.execute(stmt)
+        return
     with get_conn() as conn:
         conn.executescript(SCHEMA)
         _migrate(conn)
@@ -167,7 +239,7 @@ def init_db() -> None:
 
 def _migrate(conn: sqlite3.Connection) -> None:
     """Add columns introduced after a DB was first created (SQLite has no IF NOT
-    EXISTS for columns). Cheap and idempotent."""
+    EXISTS for columns). Cheap and idempotent. Postgres always starts from the full schema."""
     cols = {r["name"] for r in conn.execute("PRAGMA table_info(job)")}
     if "resume_json" not in cols:
         conn.execute("ALTER TABLE job ADD COLUMN resume_json TEXT DEFAULT ''")
@@ -176,12 +248,12 @@ def _migrate(conn: sqlite3.Connection) -> None:
 # ------------------------------------------------------------------ candidate #
 def insert_candidate(c: Candidate) -> int:
     with get_conn() as conn:
-        cur = conn.execute(
+        return _insert(
+            conn,
             "INSERT INTO candidate(name,email,phone,location,headline,links_json) "
             "VALUES (?,?,?,?,?,?)",
             (c.name, c.email, c.phone, c.location, c.headline, json.dumps(c.links)),
         )
-        return int(cur.lastrowid)
 
 
 def get_candidate(candidate_id: int) -> Optional[Candidate]:
@@ -220,14 +292,14 @@ def _row_to_entity(row: sqlite3.Row) -> KBEntity:
 
 def insert_entity(e: KBEntity) -> int:
     with get_conn() as conn:
-        cur = conn.execute(
+        return _insert(
+            conn,
             "INSERT INTO kb_entity(candidate_id,entity_type,name,content,data_json,"
             "domain,status,source,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
             (e.candidate_id, e.entity_type.value, e.name, e.content,
              json.dumps(e.data), e.domain, e.status.value, e.source,
              e.created_at, e.updated_at),
         )
-        return int(cur.lastrowid)
 
 
 def get_entities(
@@ -306,12 +378,12 @@ def update_candidate(candidate_id: int, c: Candidate) -> bool:
 def insert_job(candidate_id: int, raw_text: str, role: str, requirements_json: str) -> int:
     from .models import _now
     with get_conn() as conn:
-        cur = conn.execute(
+        return _insert(
+            conn,
             "INSERT INTO job(candidate_id,raw_text,role,requirements_json,created_at) "
             "VALUES (?,?,?,?,?)",
             (candidate_id, raw_text, role, requirements_json, _now()),
         )
-        return int(cur.lastrowid)
 
 
 def get_job(job_id: int) -> Optional[sqlite3.Row]:
@@ -380,10 +452,10 @@ def insert_role_profile(candidate_id: int, name: str, target_role: str,
                         job_id: int) -> int:
     from .models import _now
     with get_conn() as conn:
-        cur = conn.execute(
+        return _insert(
+            conn,
             "INSERT INTO role_profile(candidate_id,name,target_role,job_id,created_at) "
             "VALUES (?,?,?,?,?)", (candidate_id, name, target_role, job_id, _now()))
-        return int(cur.lastrowid)
 
 
 def list_role_profiles(candidate_id: int) -> list[dict]:
@@ -405,8 +477,9 @@ def get_cached_vector(provider: str, text_hash: str) -> Optional[list[float]]:
 def set_cached_vector(provider: str, text_hash: str, vector: list[float]) -> None:
     with get_conn() as conn:
         conn.execute(
-            "INSERT OR REPLACE INTO embedding_cache(provider,text_hash,vector_json) "
-            "VALUES (?,?,?)", (provider, text_hash, json.dumps(vector)))
+            "INSERT INTO embedding_cache(provider,text_hash,vector_json) VALUES (?,?,?) "
+            "ON CONFLICT(provider,text_hash) DO UPDATE SET vector_json=excluded.vector_json",
+            (provider, text_hash, json.dumps(vector)))
 
 
 # =========================================================================== #
@@ -438,12 +511,12 @@ def upsert_opportunity(opp) -> int:
                 (opp.dedup_key, opp.status.value, opp.model_dump_json(), opp.updated_at,
                  opp.id))
             return int(opp.id)
-        cur = conn.execute(
+        return _insert(
+            conn,
             "INSERT INTO opportunity(candidate_id,source,source_id,dedup_key,status,"
             "data_json,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?)",
             (opp.candidate_id, opp.source, opp.source_id, opp.dedup_key, opp.status.value,
              opp.model_dump_json(), opp.discovered_at, opp.updated_at))
-        return int(cur.lastrowid)
 
 
 def save_opportunity(opp) -> None:
@@ -487,7 +560,8 @@ def list_opportunities(candidate_id: int, *, statuses: Optional[Iterable[str]] =
 def save_preferences(prefs) -> None:
     with get_conn() as conn:
         conn.execute(
-            "INSERT OR REPLACE INTO search_preferences(candidate_id,data_json) VALUES (?,?)",
+            "INSERT INTO search_preferences(candidate_id,data_json) VALUES (?,?) "
+            "ON CONFLICT(candidate_id) DO UPDATE SET data_json=excluded.data_json",
             (prefs.candidate_id, prefs.model_dump_json()))
 
 
@@ -504,10 +578,10 @@ def get_preferences(candidate_id: int):
 # --------------------------------------------------------------------- batch #
 def insert_batch(batch) -> int:
     with get_conn() as conn:
-        cur = conn.execute(
+        return _insert(
+            conn,
             "INSERT INTO application_batch(candidate_id,data_json,created_at) VALUES (?,?,?)",
             (batch.candidate_id, batch.model_dump_json(), batch.created_at))
-        return int(cur.lastrowid)
 
 
 def save_batch(batch) -> None:
@@ -544,10 +618,10 @@ def list_batches(candidate_id: int):
 # ------------------------------------------------------------- discovery run #
 def insert_run(run) -> int:
     with get_conn() as conn:
-        cur = conn.execute(
+        run.id = _insert(
+            conn,
             "INSERT INTO discovery_run(candidate_id,data_json,created_at) VALUES (?,?,?)",
             (run.candidate_id, run.model_dump_json(), run.created_at))
-        run.id = int(cur.lastrowid)
         return run.id
 
 
@@ -591,12 +665,12 @@ def upsert_task(task):
                 "WHERE id=?",
                 (task.batch_id, task.status.value, task.model_dump_json(), _now(), task.id))
             return int(task.id)
-        cur = conn.execute(
+        return _insert(
+            conn,
             "INSERT INTO application_task(opportunity_id,batch_id,candidate_id,status,"
             "data_json,created_at,updated_at) VALUES (?,?,?,?,?,?,?)",
             (task.opportunity_id, task.batch_id, task.candidate_id, task.status.value,
              task.model_dump_json(), task.created_at, _now()))
-        return int(cur.lastrowid)
 
 
 def save_task(task) -> None:
@@ -653,20 +727,25 @@ def _age_seconds(ts: str) -> float:
 
 
 def claim_next_task(worker_id: str, *, heartbeat_timeout: float, stale_grace: float):
-    """Atomically hand the oldest QUEUED task to one worker (§15). BEGIN IMMEDIATE takes the
-    write lock up front so two racing workers serialize — the loser sees no QUEUED row and
-    gets nothing. Recovers stale claims first so a crashed worker's work isn't stranded (§18).
-    Returns (task, submit) or (None, False). `submit` is the effective, cap-checked decision."""
+    """Atomically hand the oldest QUEUED task to one worker (§15). Two racing workers
+    serialize — the loser gets nothing. SQLite: BEGIN IMMEDIATE takes the write lock up
+    front. Postgres: SELECT … FOR UPDATE SKIP LOCKED locks the chosen row so a concurrent
+    claim skips it (never a silent double-claim). Recovers stale claims first so a crashed
+    worker's work isn't stranded (§18). Returns (task, submit) or (None, False)."""
     from .models import ApplicationStatus as St, _now
     recover_stale_tasks(heartbeat_timeout=heartbeat_timeout, stale_grace=stale_grace)
     conn = get_conn()
     try:
-        conn.execute("BEGIN IMMEDIATE")
-        row = conn.execute(
-            "SELECT * FROM application_task WHERE status='QUEUED' ORDER BY id LIMIT 1"
-        ).fetchone()
+        if _is_pg():
+            select_queued = ("SELECT * FROM application_task WHERE status='QUEUED' "
+                             "ORDER BY id LIMIT 1 FOR UPDATE SKIP LOCKED")
+        else:
+            conn.execute("BEGIN IMMEDIATE")
+            select_queued = ("SELECT * FROM application_task WHERE status='QUEUED' "
+                             "ORDER BY id LIMIT 1")
+        row = conn.execute(select_queued).fetchone()
         if row is None:
-            conn.execute("COMMIT")
+            conn.commit()
             return None, False
         task = _task_from_row(row)
         # Effective submit decision, evaluated once here and gated by the batch cap (§20).
@@ -691,10 +770,10 @@ def claim_next_task(worker_id: str, *, heartbeat_timeout: float, stale_grace: fl
         conn.execute(
             "UPDATE application_task SET status=?,data_json=?,updated_at=? WHERE id=?",
             (task.status.value, task.model_dump_json(), _now(), task.id))
-        conn.execute("COMMIT")
+        conn.commit()
         return task, submit
     except Exception:
-        conn.execute("ROLLBACK")
+        conn.rollback()
         raise
     finally:
         conn.close()
