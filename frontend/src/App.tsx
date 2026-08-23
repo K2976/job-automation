@@ -6,6 +6,7 @@ import Analysis from './panels/Analysis'
 import Modifications from './panels/Modifications'
 import Resume from './panels/Resume'
 import Opportunities from './panels/Opportunities'
+import Applications from './panels/Applications'
 
 const STEPS = [
   { label: 'Profile', title: 'Candidate profile',
@@ -18,7 +19,7 @@ const STEPS = [
     desc: 'Your role-specific résumé, validated against your real evidence.' },
 ]
 
-type View = 'resume' | 'opportunities'
+type View = 'resume' | 'opportunities' | 'applications'
 
 export function Shell({ engine }: { engine: ReturnType<typeof useEngine> }) {
   const { step, candidate, analysis } = engine
@@ -26,7 +27,7 @@ export function Shell({ engine }: { engine: ReturnType<typeof useEngine> }) {
   const done = [!!candidate, !!analysis, !!engine.generation, false]
   const enabled = [true, !!candidate, !!analysis, !!analysis]
   const Panel = [Profile, Analysis, Modifications, Resume][step]
-  const wide = step === 3 || view === 'opportunities'
+  const wide = step === 3 || view !== 'resume'
 
   return (
     <div className="min-h-full overflow-x-hidden">
@@ -46,7 +47,8 @@ export function Shell({ engine }: { engine: ReturnType<typeof useEngine> }) {
               <div className="mb-5"><Alert title="Something went wrong">{engine.error}</Alert></div>}
             <Panel engine={engine} />
           </>
-          : <>
+          : view === 'opportunities'
+          ? <>
             <header className="mb-7">
               <h1 className="text-[30px] font-bold tracking-tight text-ink">Opportunities</h1>
               <p className="mt-1 text-[16px] text-muted">
@@ -55,6 +57,16 @@ export function Shell({ engine }: { engine: ReturnType<typeof useEngine> }) {
               </p>
             </header>
             <Opportunities candidateId={engine.candidate?.id ?? null} />
+          </>
+          : <>
+            <header className="mb-7">
+              <h1 className="text-[30px] font-bold tracking-tight text-ink">Applications</h1>
+              <p className="mt-1 text-[16px] text-muted">
+                Automate applying for prepared opportunities. You choose how much to approve;
+                CAPTCHAs stop the agent and are never bypassed.
+              </p>
+            </header>
+            <Applications candidateId={engine.candidate?.id ?? null} />
           </>}
       </main>
     </div>
@@ -64,7 +76,8 @@ export function Shell({ engine }: { engine: ReturnType<typeof useEngine> }) {
 function TopBar({ engine, view, onView }:
   { engine: ReturnType<typeof useEngine>; view: View; onView: (v: View) => void }) {
   const nav: { id: View; label: string }[] = [
-    { id: 'resume', label: 'Résumé' }, { id: 'opportunities', label: 'Opportunities' }]
+    { id: 'resume', label: 'Résumé' }, { id: 'opportunities', label: 'Opportunities' },
+    { id: 'applications', label: 'Applications' }]
   return (
     <header className="border-b border-line bg-surface">
       <div className="mx-auto flex h-14 max-w-[1320px] items-center gap-3 px-6">

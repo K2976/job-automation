@@ -155,4 +155,37 @@ export interface ApplicationBatch {
   id: number; candidate_id: number; name: string; max_opportunities: number
   target_roles: string[]; opportunity_ids: number[]
   status: 'PREPARATION' | 'READY' | 'ARCHIVED'; created_at: string
+  approval_mode: string
+}
+
+/* --- V3: Application Automation --- */
+export type ApprovalMode = 'MANUAL' | 'REVIEW_BEFORE_SUBMIT' | 'AUTONOMOUS'
+
+export type ApplicationTaskStatus =
+  | 'READY' | 'QUEUED' | 'PAUSED' | 'OPENING' | 'INSPECTING' | 'FILLING'
+  | 'REVIEW_REQUIRED' | 'USER_ACTION_REQUIRED' | 'LOGIN_REQUIRED' | 'BLOCKED'
+  | 'FAILED' | 'SUBMITTED' | 'CONFIRMED' | 'SUBMISSION_UNCERTAIN' | 'CANCELLED'
+
+export interface ApplicationQuestion {
+  field_key: string; question_text: string; name: string; field_type: string
+  required: boolean; options: string[]; answer: string; answer_source: string
+  confidence: number; requires_review: boolean; reason: string
+}
+
+export interface TaskEvent { at: string; event: string; detail: string }
+
+export interface ApplicationTask {
+  id: number; opportunity_id: number; batch_id: number | null; candidate_id: number
+  application_url: string; status: ApplicationTaskStatus; approval_mode: ApprovalMode
+  resume_artifact: string; cover_letter: string; current_page: number
+  questions: ApplicationQuestion[]; logs: TaskEvent[]
+  error_code: string; error_message: string; confirmation_reference: string
+  retry_count: number; created_at: string; started_at: string
+  finished_at: string; submitted_at: string
+}
+
+export interface ApplicationSummary {
+  questions: number; deterministic: number; llm_generated: number; user_provided: number
+  unresolved: number; unresolved_questions: string[]; can_submit: boolean
+  status: string; approval_mode: string
 }

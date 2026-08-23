@@ -39,6 +39,11 @@ const LABEL: Record<string, string> = {
   AVAILABLE: 'Healthy', CAPTCHA: 'CAPTCHA', UNREACHABLE: 'Unreachable',
   RATE_LIMITED: 'Rate limited', UNSUPPORTED_SOURCE: 'Unsupported', ERROR: 'Error',
   UNKNOWN: 'Not run yet',
+  // V3 application task lifecycle
+  READY: 'Ready', QUEUED: 'Queued', PAUSED: 'Paused', OPENING: 'Opening',
+  INSPECTING: 'Inspecting', FILLING: 'Filling', USER_ACTION_REQUIRED: 'Needs you',
+  LOGIN_REQUIRED: 'Login needed', SUBMITTED: 'Submitted', CONFIRMED: 'Confirmed',
+  SUBMISSION_UNCERTAIN: 'Unconfirmed', CANCELLED: 'Cancelled',
 }
 const TONE: Record<string, Tone> = {
   ORIGINAL: 'accent', USER_CONFIRMED: 'pos', USER_EDITED: 'pos', GENERATED: 'neutral',
@@ -52,6 +57,10 @@ const TONE: Record<string, Tone> = {
   APPLIED: 'pos', SKIPPED: 'neutral', EXPIRED: 'neutral', BLOCKED: 'neg',
   AVAILABLE: 'pos', CAPTCHA: 'warn', UNREACHABLE: 'warn',
   RATE_LIMITED: 'warn', ERROR: 'neg', UNKNOWN: 'neutral',
+  READY: 'neutral', QUEUED: 'neutral', PAUSED: 'neutral', OPENING: 'accent',
+  INSPECTING: 'accent', FILLING: 'accent', USER_ACTION_REQUIRED: 'warn',
+  LOGIN_REQUIRED: 'warn', SUBMITTED: 'pos', CONFIRMED: 'pos',
+  SUBMISSION_UNCERTAIN: 'warn', CANCELLED: 'neutral',
 }
 const TONE_CLASS: Record<Tone, string> = {
   pos: 'bg-success-soft text-success', warn: 'bg-warn-soft text-warn',

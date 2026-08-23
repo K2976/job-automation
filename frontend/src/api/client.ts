@@ -1,7 +1,7 @@
 import type {
-  AnalysisResult, ApplicationBatch, ApprovalAction, Candidate, DiscoveryRun,
-  Explanation, GenerationResult, Health, KBEntity, ModificationSuggestion,
-  Opportunity, RoleProfile, SearchPreferences, SourceHealth, WhyApply,
+  AnalysisResult, ApplicationBatch, ApplicationSummary, ApplicationTask, ApprovalAction,
+  ApprovalMode, Candidate, DiscoveryRun, Explanation, GenerationResult, Health, KBEntity,
+  ModificationSuggestion, Opportunity, RoleProfile, SearchPreferences, SourceHealth, WhyApply,
 } from './types'
 
 // Empty base = same origin (local dev via Vite proxy, or the FastAPI-served build).
@@ -144,4 +144,37 @@ export const api = {
 
   sources: (cid: number) =>
     req<{ sources: SourceHealth[] }>(`/api/candidates/${cid}/sources`),
+
+  /* --- V3: Application Automation --- */
+  createApplications: (batchId: number, approval_mode: ApprovalMode) =>
+    req<{ tasks: ApplicationTask[]; count: number; max_opportunities: number }>(
+      `/api/batches/${batchId}/applications`,
+      { method: 'POST', body: JSON.stringify({ approval_mode }) }),
+
+  listBatchApplications: (batchId: number) =>
+    req<{ tasks: ApplicationTask[] }>(`/api/batches/${batchId}/applications`),
+
+  listApplications: (cid: number) =>
+    req<{ tasks: ApplicationTask[] }>(`/api/candidates/${cid}/applications`),
+
+  getApplication: (taskId: number) =>
+    req<{ task: ApplicationTask; summary: ApplicationSummary }>(`/api/applications/${taskId}`),
+
+  startApplication: (taskId: number) =>
+    req<{ task_id: number; will_submit: boolean }>(`/api/applications/${taskId}/start`,
+      { method: 'POST' }),
+
+  startBatchApplications: (batchId: number) =>
+    req<{ batch_id: number }>(`/api/batches/${batchId}/applications/start`, { method: 'POST' }),
+
+  approveApplication: (taskId: number) =>
+    req<{ task_id: number }>(`/api/applications/${taskId}/approve`, { method: 'POST' }),
+
+  provideAnswers: (taskId: number, answers: Record<string, string>) =>
+    req<ApplicationTask>(`/api/applications/${taskId}/answers`,
+      { method: 'POST', body: JSON.stringify({ answers }) }),
+
+  controlApplication: (taskId: number, action: string) =>
+    req<{ task_id: number; status?: string }>(`/api/applications/${taskId}/action`,
+      { method: 'POST', body: JSON.stringify({ action }) }),
 }
