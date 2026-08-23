@@ -1,0 +1,13 @@
+# Convenience: `docker compose up browser-worker` on the MacBook during a demo (§26).
+# This runs ONLY the local browser worker — NOT the public site (that's Vercel + Render).
+# The worker connects out to the deployed Render API using .env.worker (gitignored).
+services:
+  browser-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    image: adaptive-resume-worker:local
+    init: true                 # clean signal handling for the Chromium subprocess
+    env_file: .env.worker      # API_BASE_URL, WORKER_AUTH_TOKEN, WORKER_ID — never committed
+    restart: "no"
+    # No `ports:` — the worker is an outbound client and must never listen (§8).
