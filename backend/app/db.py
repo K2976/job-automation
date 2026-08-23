@@ -421,8 +421,10 @@ def replace_suggestions(job_id: int, candidate_id: int,
 
 def get_suggestions(job_id: int) -> list[ModificationSuggestion]:
     with get_conn() as conn:
-        rows = conn.execute("SELECT * FROM suggestion WHERE job_id=? ORDER BY rowid",
-                            (job_id,)).fetchall()
+        # ORDER BY created_at (portable) not rowid — rowid is SQLite-only and 500s on Postgres.
+        rows = conn.execute(
+            "SELECT * FROM suggestion WHERE job_id=? ORDER BY created_at, id",
+            (job_id,)).fetchall()
     out = []
     for r in rows:
         out.append(ModificationSuggestion(
