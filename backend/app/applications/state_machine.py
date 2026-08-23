@@ -7,7 +7,7 @@ from ..models import ApplicationStatus as S
 
 # Legal transitions. Read as: from → {allowed next states}.
 _LEGAL: dict[S, set[S]] = {
-    S.READY: {S.QUEUED, S.CANCELLED},
+    S.READY: {S.QUEUED, S.PAUSED, S.CANCELLED},
     S.QUEUED: {S.OPENING, S.PAUSED, S.CANCELLED},
     S.PAUSED: {S.QUEUED, S.CANCELLED},
     S.OPENING: {S.INSPECTING, S.BLOCKED, S.LOGIN_REQUIRED, S.FAILED},

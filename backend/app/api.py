@@ -51,6 +51,10 @@ app.add_middleware(
 from .opportunities_api import router as opportunities_router  # noqa: E402
 app.include_router(opportunities_router)
 
+# V3 — Application Automation routes.
+from .applications_api import router as applications_router  # noqa: E402
+app.include_router(applications_router)
+
 
 # ------------------------------------------------------------------ requests #
 class JobIn(BaseModel):

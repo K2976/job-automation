@@ -399,6 +399,10 @@ class ApplicationBatch(BaseModel):
     filters: dict[str, Any] = Field(default_factory=dict)
     opportunity_ids: list[int] = Field(default_factory=list)
     status: BatchStatus = BatchStatus.PREPARATION
+    # V3: default approval mode inherited by this batch's application tasks (§10). Stored as
+    # a string here (the ApprovalMode enum is defined in the V3 section below); the queue
+    # coerces it. Defaults to the safe middle option.
+    approval_mode: str = "REVIEW_BEFORE_SUBMIT"
     created_at: str = Field(default_factory=_now)
 
 
