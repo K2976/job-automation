@@ -105,6 +105,10 @@ export interface Explanation {
 }
 
 export interface Health { status: string; llm_provider: string; embedding_provider: string }
+export interface WorkerInfo { worker_id: string; status: string; current_task_id: number | null; last_seen: string }
+export interface WorkerStatusResponse {
+  online: boolean; inline: boolean; heartbeat_timeout: number; workers: WorkerInfo[]
+}
 export interface RoleProfile { id: number; name: string; target_role: string; job_id: number }
 
 /* --- V2: Opportunity Intelligence --- */

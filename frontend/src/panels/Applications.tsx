@@ -14,6 +14,34 @@ const MODES: { id: ApprovalMode; label: string; hint: string }[] = [
     hint: 'Submits automatically when everything is safely resolved.' },
 ]
 
+// Poll the automation worker's liveness. Tolerates the endpoint being absent/empty (older
+// backend or test mock) by staying "offline" rather than throwing.
+function WorkerBadge() {
+  const [w, setW] = useState<{ online?: boolean; inline?: boolean } | null>(null)
+  useEffect(() => {
+    let alive = true
+    const tick = () => api.workerStatus().then(s => alive && setW(s)).catch(() => {})
+    tick()
+    const id = setInterval(tick, 8000)
+    return () => { alive = false; clearInterval(id) }
+  }, [])
+
+  // In-process mode (local dev): the backend runs the browser itself — no separate worker.
+  if (w?.inline) return null
+  const online = !!w?.online
+  return (
+    <div className="mb-5 flex items-center gap-2.5 rounded-lg border border-default px-3 py-2">
+      <span className={`h-2 w-2 rounded-full ${online ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+      <span className="text-sm font-medium">Automation worker</span>
+      <span className="text-sm text-muted">
+        {online
+          ? 'Online — ready to process applications.'
+          : 'Offline — start the local browser worker to enable automated applications.'}
+      </span>
+    </div>
+  )
+}
+
 export default function Applications({ candidateId }: { candidateId: number | null }) {
   const eng = useApplications(candidateId)
   const [detail, setDetail] = useState<number | null>(null)
@@ -25,6 +53,7 @@ export default function Applications({ candidateId }: { candidateId: number | nu
 
   return (
     <div>
+      <WorkerBadge />
       {eng.error && <div className="mb-5"><Alert title="Something went wrong">{eng.error}</Alert></div>}
       {eng.busy && <div className="mb-5"><Loading label={eng.busy} /></div>}
 

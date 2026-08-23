@@ -2,6 +2,7 @@ import type {
   AnalysisResult, ApplicationBatch, ApplicationSummary, ApplicationTask, ApprovalAction,
   ApprovalMode, Candidate, DiscoveryRun, Explanation, GenerationResult, Health, KBEntity,
   ModificationSuggestion, Opportunity, RoleProfile, SearchPreferences, SourceHealth, WhyApply,
+  WorkerStatusResponse,
 } from './types'
 
 // Empty base = same origin (local dev via Vite proxy, or the FastAPI-served build).
@@ -32,6 +33,7 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   health: () => req<Health>('/api/health'),
+  workerStatus: () => req<WorkerStatusResponse>('/api/worker/status'),
   sampleJds: () => req<Record<string, string>>('/api/fixtures/jds'),
 
   seedFixture: () =>
