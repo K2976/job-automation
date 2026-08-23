@@ -105,10 +105,11 @@ curl -s https://api.groq.com/openai/v1/models -H "Authorization: Bearer $GROQ_AP
 curl -s "https://generativelanguage.googleapis.com/v1beta/models?key=$GEMINI_API_KEY" | head
 ```
 
-**V3.5 production split:** the public site (Vercel + Render + managed Postgres) stays up
+**V3.5 production split:** the public site (Vercel + Render + **Neon** Postgres) stays up
 independently; the heavy Playwright/Chromium worker runs on the MacBook in Docker and reaches
 the Render API over an authenticated outbound channel. Follow
-[`docs/deployment-runbook.md`](docs/deployment-runbook.md); background in
+[`docs/deployment-runbook.md`](docs/deployment-runbook.md) and
+[`docs/manual-cloud-setup.md`](docs/manual-cloud-setup.md); background in
 [production-architecture](docs/production-architecture.md), [worker-api](docs/worker-api.md),
 [database](docs/database.md), [docker worker](docs/docker-browser-worker.md),
 [mac worker](docs/mac-browser-worker.md), [render](docs/render-deployment.md),

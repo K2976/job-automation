@@ -1,13 +1,15 @@
-# Render deployment (API + Postgres)
+# Render deployment (API only; Postgres is Neon)
 
-Deploys the FastAPI backend and its managed Postgres. The browser worker is **not** here
-(§40) — it runs on the MacBook. Extends the base split-deploy notes in [deployment.md](deployment.md).
+Deploys the FastAPI backend. The database is an **external** Neon Postgres (project
+`job-automation`) — Render does **not** provision it. The browser worker is **not** here
+(§40) — it runs on the MacBook. Extends [deployment.md](deployment.md); DB setup is in
+[manual-cloud-setup.md](manual-cloud-setup.md).
 
 ## Blueprint
 
-`render.yaml` declares a free web service **and** a managed Postgres, and wires
-`DATABASE_URL` from the database into the service. Create a **Blueprint** from the repo and
-Render reads it.
+`render.yaml` declares a free web service (no `databases:` block). `DATABASE_URL` is
+`sync:false` — you paste the Neon pooled connection string into the dashboard. Create a
+**Blueprint** from the repo and Render reads it.
 
 Entry point (already set): `uvicorn app.api:app --app-dir backend --host 0.0.0.0 --port $PORT`
 — binds `0.0.0.0:$PORT`, never localhost (§21). Health check: `/api/health`.
@@ -18,7 +20,7 @@ Set on the Render service. **Never** print or commit actual values.
 
 | Variable | Notes |
 | --- | --- |
-| `DATABASE_URL` | From the managed Postgres (blueprint wires it). Omit ⇒ ephemeral SQLite. |
+| `DATABASE_URL` | The Neon pooled connection string (external, `sync:false`). Omit ⇒ ephemeral SQLite. |
 | `INLINE_APPLICATIONS` | **`false`** — the API must only enqueue, never launch Chromium (§5). |
 | `WORKER_AUTH_TOKEN` | Shared worker token (`sync:false`). Same value in the MacBook `.env.worker`. |
 | `CORS_ORIGINS` | Your Vercel URL (§24). Not a security boundary. |
@@ -27,11 +29,13 @@ Set on the Render service. **Never** print or commit actual values.
 | `GEMINI_AUTH` | `query` (default) \| `bearer`. |
 | `OPPORTUNITY_SOURCES` | `fixtures` (default, offline) \| add `greenhouse,lever`. |
 
-## Postgres
+## Postgres (Neon, external)
 
-Free-tier Render Postgres is time-limited (~30 days) — fine for a demo, upgrade for anything
-long-lived. Schema is created automatically at app startup (`init_db()`); no manual migration
-step. See [database.md](database.md) to initialize or verify a database manually.
+The database is Neon (project `job-automation`), supplied via `DATABASE_URL` — Render does not
+create it. Schema is created automatically at app startup (`init_db()`); no manual migration
+step. Getting the Neon connection string and verifying it is in
+[manual-cloud-setup.md](manual-cloud-setup.md); the dialect details are in
+[database.md](database.md).
 
 ## Free-tier note
 

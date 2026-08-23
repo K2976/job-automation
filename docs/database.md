@@ -11,6 +11,11 @@ after idle spin-down. Shared state that must survive that goes in managed Postgr
 single throwaway demo, ephemeral SQLite still works (re-seed each session) — but the tasks a
 worker is processing must be durable, so the deployment uses Postgres.
 
+**The production Postgres is Neon** (project `job-automation`), supplied to the Render API as
+`DATABASE_URL` — Render does not provision a database (see `render.yaml`). Neon uses a standard
+`postgresql://…?sslmode=require` DSN, which the dialect layer below handles unchanged. Getting
+the connection string and verifying it: [manual-cloud-setup.md](manual-cloud-setup.md).
+
 ## What persists
 
 The full domain schema (unchanged across dialects): `candidate`, `kb_entity`, `job`,

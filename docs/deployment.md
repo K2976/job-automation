@@ -13,8 +13,11 @@ serves the built frontend) or split across two (Vercel + Render). This covers th
 2. **`VITE_API_BASE` is build-time.** Vite inlines it at `npm run build`. Changing the
    backend URL later means **rebuilding/redeploying the frontend**.
 3. **SQLite on Render free tier is ephemeral.** It resets on every redeploy and after the
-   ~15-min idle spin-down. Fine for a single demo session (re-seed on load). For
-   persistence, attach a paid disk (below).
+   ~15-min idle spin-down. Fine for a single demo session (re-seed on load). For durable
+   state (V3.5), the deployment uses an **external Neon Postgres** via `DATABASE_URL` —
+   `db.py` is already dual-dialect, so no code swap. See
+   [manual-cloud-setup.md](manual-cloud-setup.md) and [database.md](database.md). (The paid
+   Render-disk option below still works if you prefer to stay on SQLite.)
 
 ## Deploy order (it's circular — follow this sequence)
 
